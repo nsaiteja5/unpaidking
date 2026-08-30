@@ -4,6 +4,7 @@ import {
   getCallbackUrl,
   getCookieOptions,
   parseOAuthStateFromCookie,
+  verifySignedOAuthState,
   createSignedSessionPayload,
   upsertXUser,
   OAUTH_COOKIE_NAME,
@@ -15,35 +16,40 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
-  const state = searchParams.get("state");
+  const stateParam = searchParams.get("state");
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
   const isHttps = request.url.startsWith("https://") || request.headers.get("x-forwarded-proto") === "https";
 
-  // Read OAuth cookie from request cookie header or next cookie store
-  const cookieStore = await cookies();
-  const rawOAuthCookie = cookieStore.get(OAUTH_COOKIE_NAME)?.value;
-  const oauthData = parseOAuthStateFromCookie(rawOAuthCookie);
+  // ─── Primary: verify state from URL (stateless, works even when cookie was dropped) ───
+  let oauthData = stateParam ? verifySignedOAuthState(stateParam) : null;
+
+  // ─── Fallback: check the cookie if URL state verification failed ───
+  if (!oauthData) {
+    const cookieStore = await cookies();
+    const rawOAuthCookie = cookieStore.get(OAUTH_COOKIE_NAME)?.value;
+    oauthData = parseOAuthStateFromCookie(rawOAuthCookie);
+  }
 
   const returnTo = oauthData?.returnTo || "/";
 
+  // Twitter user denied access or an error occurred
   if (error) {
+    const isCancel = error === "access_denied";
     console.error("[auth] Twitter returned an error in callback:", error, errorDescription);
-    return NextResponse.redirect(new URL(`${returnTo}${returnTo.includes("?") ? "&" : "?"}auth_error=${encodeURIComponent(error)}`, request.url));
+    const errCode = isCancel ? "cancelled" : encodeURIComponent(error);
+    return NextResponse.redirect(new URL(`${returnTo}${returnTo.includes("?") ? "&" : "?"}auth_error=${errCode}`, request.url));
   }
 
-  if (!code || !state) {
-    console.error("[auth] Missing code or state in callback request:", { hasCode: Boolean(code), hasState: Boolean(state) });
+  if (!code || !stateParam) {
+    console.error("[auth] Missing code or state in callback request:", { hasCode: Boolean(code), hasState: Boolean(stateParam) });
     return NextResponse.redirect(new URL(`${returnTo}${returnTo.includes("?") ? "&" : "?"}auth_error=missing_code_or_state`, request.url));
   }
 
-  if (!oauthData || oauthData.state !== state) {
-    console.error("[auth] OAuth state cookie missing or mismatched:", {
-      hasOAuthCookie: Boolean(rawOAuthCookie),
-      cookieState: oauthData?.state,
-      paramState: state,
-    });
+  // If neither the signed state nor the cookie yielded valid OAuth data, state_mismatch
+  if (!oauthData) {
+    console.error("[auth] OAuth state verification failed — signed state invalid or expired and no valid cookie found.");
     return NextResponse.redirect(new URL(`${returnTo}${returnTo.includes("?") ? "&" : "?"}auth_error=state_mismatch`, request.url));
   }
 
@@ -85,10 +91,10 @@ export async function GET(request: Request) {
     if (!tokenRes.ok && clientSecret) {
       const firstErr = await tokenRes.text();
       console.warn("[auth] Basic auth token exchange failed, retrying with body credentials:", firstErr);
-      
+
       const retryParams = new URLSearchParams(tokenParams);
       retryParams.set("client_secret", clientSecret);
-      
+
       tokenRes = await fetch("https://api.twitter.com/2/oauth2/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },

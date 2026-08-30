@@ -164,10 +164,14 @@ export function SiteHeader({ initialUser, onFilterUserThrones }: Props) {
               authError === "missing_client_id" ? "X_CLIENT_ID is not configured in Vercel." :
               authError === "token_exchange_failed" ? "Twitter token exchange failed. Check that callback URL is set to https://unpaidking.lol/api/auth/x/callback in Twitter Developer portal." :
               authError === "cancelled" ? "Sign in was cancelled." :
-              authError === "state_mismatch" ? "OAuth session expired. Please try connecting again." :
+              authError === "state_mismatch" ? "Session verification failed. Please try signing in again." :
+              authError === "missing_code_or_state" ? "Twitter did not complete the sign-in. Please try again." :
+              authError === "profile_fetch_failed" ? "Couldn't load your Twitter profile. Please try again." :
+              authError === "server_exception" ? "An unexpected error occurred. Please try again." :
               `Authentication error (${authError}).`
             }
           </span>
+
           <button
             type="button"
             onClick={() => setAuthError(null)}

@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { createHmac, randomBytes, createHash } from "node:crypto";
+import { createHmac, randomBytes, createHash, timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, ensureDatabaseReady, pool } from "@/db";
 import { users } from "@/db/schema";
@@ -89,6 +89,53 @@ export function createSignedSessionPayload(user: SessionUser): string {
 
 export function createSignedOAuthPayload(data: OAuthStateData): string {
   return signPayload(JSON.stringify(data));
+}
+
+/**
+ * Creates a self-contained, HMAC-signed OAuth state string.
+ * The entire OAuth payload is embedded in the `state` param sent to Twitter,
+ * so the callback works even when the browser drops the session cookie
+ * (e.g. Safari ITP, Brave, cross-site redirects with partitioned cookies).
+ */
+export function createSignedOAuthState(data: OAuthStateData): string {
+  const payload = JSON.stringify({ ...data, iat: Date.now() });
+  const encoded = Buffer.from(payload).toString("base64url");
+  const sig = createHmac("sha256", SESSION_SECRET).update(encoded).digest("base64url");
+  return `${encoded}.${sig}`;
+}
+
+/**
+ * Verifies a self-contained signed OAuth state string and returns the payload.
+ * Returns null if the signature is invalid or the state is older than 15 minutes.
+ */
+export function verifySignedOAuthState(signedState: string): OAuthStateData | null {
+  try {
+    const parts = signedState.split(".");
+    if (parts.length !== 2) return null;
+    const [encoded, sig] = parts;
+    const expectedSig = createHmac("sha256", SESSION_SECRET).update(encoded).digest("base64url");
+
+    // Constant-time comparison to prevent timing attacks
+    const sigBuf = Buffer.from(sig);
+    const expectedBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expectedBuf.length) return null;
+    if (!timingSafeEqual(sigBuf, expectedBuf)) return null;
+
+    const raw = Buffer.from(encoded, "base64url").toString("utf-8");
+    const parsed = JSON.parse(raw);
+
+    // Enforce 15-minute expiry
+    if (!parsed.iat || Date.now() - parsed.iat > 15 * 60 * 1000) return null;
+
+    return {
+      state: parsed.state,
+      verifier: parsed.verifier,
+      returnTo: parsed.returnTo,
+      callbackUrl: parsed.callbackUrl,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function setSessionUser(user: SessionUser) {

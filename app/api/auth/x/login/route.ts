@@ -6,6 +6,7 @@ import {
   getCallbackUrl,
   getCookieOptions,
   createSignedOAuthPayload,
+  createSignedOAuthState,
   createSignedSessionPayload,
   upsertXUser,
   OAUTH_COOKIE_NAME,
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
       xName: `${handle.charAt(0).toUpperCase() + handle.slice(1)} Founder`,
       xAvatarUrl: null,
     });
-    
+
     const response = NextResponse.redirect(new URL(returnTo, request.url));
     const sessionPayload = createSignedSessionPayload(devUser);
     response.cookies.set(SESSION_COOKIE_NAME, sessionPayload, {
@@ -45,28 +46,34 @@ export async function GET(request: Request) {
 
   // Real Twitter OAuth 2.0 PKCE flow
   const { codeVerifier, codeChallenge } = generatePkce();
-  const state = base64url(randomBytes(16));
+  const stateId = base64url(randomBytes(16));
 
   const oauthData = {
-    state,
+    state: stateId,
     verifier: codeVerifier,
     returnTo,
     callbackUrl,
   };
 
-  const signedPayload = createSignedOAuthPayload(oauthData);
+  // ─── Primary: embed the full payload in the state param (stateless, cookie-independent) ───
+  // This allows the callback to verify and extract PKCE verifier even when browsers
+  // block the session cookie on cross-site redirects (Safari ITP, Brave, partitioned cookies).
+  const signedState = createSignedOAuthState(oauthData);
+
+  // ─── Fallback: also persist in a signed cookie for environments that support it ───
+  const cookiePayload = createSignedOAuthPayload(oauthData);
 
   const authUrl = new URL("https://twitter.com/i/oauth2/authorize");
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("client_id", clientId);
   authUrl.searchParams.set("redirect_uri", callbackUrl);
   authUrl.searchParams.set("scope", "tweet.read users.read offline.access");
-  authUrl.searchParams.set("state", state);
+  authUrl.searchParams.set("state", signedState);
   authUrl.searchParams.set("code_challenge", codeChallenge);
   authUrl.searchParams.set("code_challenge_method", "S256");
 
   const response = NextResponse.redirect(authUrl.toString());
-  response.cookies.set(OAUTH_COOKIE_NAME, signedPayload, {
+  response.cookies.set(OAUTH_COOKIE_NAME, cookiePayload, {
     ...getCookieOptions(isHttps),
     maxAge: 900, // 15 minutes
   });

@@ -116,9 +116,52 @@ button, input, textarea, select { font: inherit; }
 .start-throne-link { color: var(--gold); font-size: 0.8rem; font-weight: 600; text-decoration: none; border-bottom: 1px solid transparent; }
 .start-throne-link:hover { border-color: var(--gold); }
 
-.dock-scroll-container { position: relative; }
+/* Dock scroll wrapper: positions arrow buttons and edge fades relative to scroll area */
+.dock-scroll-wrapper { position: relative; display: flex; align-items: center; gap: 0; }
+.dock-scroll-container { flex: 1; min-width: 0; position: relative; cursor: grab; }
+.dock-scroll-container:active { cursor: grabbing; }
 .dock-scroll { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 16px; scrollbar-width: none; }
 .dock-scroll::-webkit-scrollbar { display: none; }
+
+/* Arrow navigation buttons */
+.dock-nav-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 36px;
+  background: var(--ink-2);
+  border: 1px solid var(--rule);
+  color: var(--paper-dim);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, color 120ms ease, border-color 120ms ease;
+  user-select: none;
+  padding: 0;
+}
+.dock-nav-btn.is-visible { opacity: 1; pointer-events: auto; }
+.dock-nav-btn:hover { color: var(--paper-bright); border-color: var(--paper-dim); }
+.dock-nav-prev { margin-right: 4px; }
+.dock-nav-next { margin-left: 4px; }
+
+/* Edge gradient fades */
+.dock-edge-fade {
+  position: absolute;
+  top: 0;
+  bottom: 16px; /* aligns above scrollbar padding */
+  width: 32px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  z-index: 2;
+}
+.dock-edge-fade.is-visible { opacity: 1; }
+.dock-edge-left { left: 32px; background: linear-gradient(to right, var(--ink), transparent); }
+.dock-edge-right { right: 32px; background: linear-gradient(to left, var(--ink), transparent); }
 .dock-item { flex: 0 0 auto; padding: 8px 14px; border: 1px solid var(--rule); background: var(--ink-2); color: var(--paper-dim); cursor: pointer; font-size: .78rem; white-space: nowrap; transition: all 120ms ease; display: flex; gap: 6px; align-items: baseline; }
 .dock-item:hover { color: var(--paper); border-color: var(--paper-dim); }
 .dock-item.is-active { border-color: var(--stamp); background: #221c17; color: var(--paper-bright); }
@@ -422,6 +465,10 @@ button, input, textarea, select { font: inherit; }
   .start-throne-link { min-height: 44px; display: inline-flex; align-items: center; font-size: 0.84rem; }
   .dock-scroll { gap: 8px; padding: 4px 0 18px; -webkit-overflow-scrolling: touch; }
   .dock-item { min-height: 44px; padding: 10px 16px; font-size: 0.82rem; display: inline-flex; align-items: center; flex-shrink: 0; }
+  /* Hide desktop nav arrows and edge fades on touch devices */
+  .dock-nav-btn { display: none !important; }
+  .dock-edge-fade { display: none !important; }
+  .dock-scroll-container { cursor: default; }
 
   /* Modals — Full screen sheets on mobile */
   .steal-modal { position: fixed; inset: 0; padding: 0; background: var(--ink); display: block; overflow-y: auto; z-index: 100; }
