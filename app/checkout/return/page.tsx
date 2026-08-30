@@ -32,6 +32,7 @@ export default async function ReturnPage({
   const { checkout, throne, reign } = context;
   const previousKing = reign.fromName || (("defaultKingName" in throne) ? throne.defaultKingName : throne.kingName);
   const isDefaultPrev = (reign.fromStakeCents ?? 0) === 0 || reign.amountCents === 900;
+  const isReconquest = checkout.amountCents < reign.amountCents;
   const publicId = reign.publicId;
 
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "https://unpaidking.lol";
@@ -39,9 +40,11 @@ export default async function ReturnPage({
   const ogImageUrl = `/r/${publicId}/og`;
 
   const headlineText = reign.offerHeadline || `${reign.kingName} takes the throne`;
-  const postText = isDefaultPrev
-    ? `${headlineText}\n\n${reign.kingName} just dethroned ${previousKing} for the ${throne.category} throne.\n\nThey were king by default and paid $0. We paid $9 to remove them.\n\n${publicUrl}`
-    : `${headlineText}\n\n${reign.kingName} just dethroned ${previousKing} for the ${throne.category} throne.\n\nThey sat there for ${dollars(reign.fromStakeCents ?? (reign.amountCents - 900))}. We paid ${dollars(reign.amountCents)} to remove them.\n\n${publicUrl}`;
+  const postText = isReconquest
+    ? `${headlineText}\n\n${reign.kingName} just RECLAIMED the ${throne.category} throne from ${previousKing}.\n\nThe crown is back where it belongs. Live throne restored.\n\n${publicUrl}`
+    : isDefaultPrev
+      ? `${headlineText}\n\n${reign.kingName} just dethroned ${previousKing} for the ${throne.category} throne.\n\nThey were king by default and paid $0. We paid ${dollars(checkout.amountCents)} to remove them.\n\n${publicUrl}`
+      : `${headlineText}\n\n${reign.kingName} just dethroned ${previousKing} for the ${throne.category} throne.\n\nThey sat there for ${dollars(reign.fromStakeCents ?? 0)}. We paid ${dollars(checkout.amountCents)} to take the seat.\n\n${publicUrl}`;
 
   const xIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(postText)}`;
 
@@ -49,9 +52,15 @@ export default async function ReturnPage({
     <article className="checkout-sheet return-sheet" aria-label="Takeover Success">
       <header className="return-header">
         <h1 className="display return-title">
-          {reign.kingName.toUpperCase()} TOOK THE {throne.category.toUpperCase()} THRONE.
+          {isReconquest
+            ? `${reign.kingName.toUpperCase()} RECLAIMED THE ${throne.category.toUpperCase()} THRONE.`
+            : `${reign.kingName.toUpperCase()} TOOK THE ${throne.category.toUpperCase()} THRONE.`}
         </h1>
-        <p className="return-sub">{previousKing} is off the live throne.</p>
+        <p className="return-sub">
+          {isReconquest
+            ? `The crown was returned to ${reign.kingName}. ${previousKing} is dethroned.`
+            : `${previousKing} is off the live throne.`}
+        </p>
       </header>
 
       {/* Share Card Preview */}

@@ -293,39 +293,149 @@ button, input, textarea, select { font: inherit; }
 .checkout-cancel:hover { color: var(--paper); }
 .form-error { margin: 12px 0; padding: 10px 14px; background: rgba(154, 43, 31, 0.2); border: 1px solid var(--stamp); color: var(--paper-bright); font-size: .8rem; line-height: 1.4; }
 
-/* Stake Selection Step */
-.stake-context { background: var(--ink); border: 1px solid var(--rule); padding: 16px 20px; margin-bottom: 24px; }
-.stake-context-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(58, 52, 44, 0.5); }
-.stake-context-row:last-child { border-bottom: 0; }
-.stake-label { color: var(--paper-dim); }
-.stake-value { color: var(--paper-bright); font-size: 0.95rem; font-weight: 600; }
-.stake-min-row { background: rgba(196, 165, 116, 0.06); margin: 0 -20px; padding: 10px 20px; border-bottom: 0; }
-.stake-min-value { color: var(--gold); font-size: 1.1rem; }
+/* Step 0: Stake Hero Card */
+.stake-hero-card {
+  background: var(--ink);
+  border: 1px solid var(--rule);
+  padding: 24px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+}
+.stake-hero-tag {
+  color: var(--paper-dim);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  margin: 0 0 12px;
+}
+.stake-input-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: 4px 0 16px;
+}
+.stake-symbol {
+  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1;
+  margin-right: 4px;
+}
+.stake-hero-input {
+  width: auto;
+  min-width: 100px;
+  max-width: 220px;
+  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  font-weight: 700;
+  color: var(--paper-bright);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--gold);
+  border-radius: 0;
+  padding: 0 4px;
+  text-align: left;
+  line-height: 1;
+  outline: 0;
+}
+.stake-hero-input:focus {
+  border-color: var(--gold-hover);
+}
+@keyframes blinkCursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.stake-cursor-blink {
+  display: inline-block;
+  width: 3px;
+  height: clamp(2.2rem, 5vw, 3.2rem);
+  background: var(--gold);
+  margin-left: 2px;
+  animation: blinkCursor 1s infinite;
+}
 
-.stake-tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-.stake-tier-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 20px 12px; background: var(--ink); border: 1.5px solid var(--rule); color: var(--paper); cursor: pointer; transition: border-color 0.2s, background 0.2s, transform 0.15s; }
-.stake-tier-btn:hover { border-color: var(--paper-dim); background: var(--ink-3); }
-.stake-tier-btn.is-selected { border-color: var(--gold); background: rgba(196, 165, 116, 0.08); transform: scale(1.02); }
-.tier-amount { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; color: var(--paper-bright); }
-.stake-tier-btn.is-selected .tier-amount { color: var(--gold); }
-.tier-tag { font-size: 0.6rem; color: var(--paper-dim); margin-top: 2px; }
-.stake-tier-btn.is-selected .tier-tag { color: var(--gold-hover); }
-.tier-detail { font-size: 0.72rem; color: var(--paper-dim); text-align: center; line-height: 1.3; margin-top: 4px; }
+/* Quick Add Pills */
+.stake-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.stake-pill {
+  background: var(--ink-2);
+  border: 1px solid var(--rule);
+  color: var(--paper-dim);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  cursor: pointer;
+  border-radius: 20px;
+  transition: all 0.15s ease;
+}
+.stake-pill:hover {
+  background: var(--ink-3);
+  border-color: var(--paper);
+  color: var(--paper-bright);
+}
+.stake-pill.is-active {
+  background: rgba(196, 165, 116, 0.15);
+  border-color: var(--gold);
+  color: var(--gold);
+}
 
-.stake-custom-section { margin-bottom: 24px; }
-.stake-custom-toggle { background: transparent; border: 0; color: var(--paper-dim); font-size: 0.78rem; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; transition: color 0.2s; }
-.stake-custom-toggle:hover, .stake-custom-toggle.is-active { color: var(--paper); }
-.stake-custom-input-wrap { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.stake-currency-sign { font-size: 1.4rem; font-weight: 700; color: var(--paper-bright); font-family: var(--font-mono), monospace; }
-.stake-custom-input { width: 140px; padding: 10px 12px; border: 1.5px solid var(--rule); background: var(--ink); color: var(--paper-bright); font-size: 1.2rem; font-family: var(--font-mono), monospace; outline: 0; -moz-appearance: textfield; }
-.stake-custom-input::-webkit-inner-spin-button, .stake-custom-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-.stake-custom-input:focus { border-color: var(--gold); }
-.stake-custom-hint { color: var(--paper-dim); font-size: 0.62rem; }
-
-.stake-chosen-summary { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 20px 16px; background: rgba(196, 165, 116, 0.06); border: 1px solid var(--rule); border-left: 3px solid var(--gold); margin-bottom: 8px; text-align: center; }
-.stake-chosen-label { font-size: 0.65rem; font-weight: 650; letter-spacing: 0.14em; text-transform: uppercase; color: var(--paper-dim); }
-.stake-chosen-amount { font-size: 2.2rem; font-weight: 700; color: var(--gold); letter-spacing: -0.03em; line-height: 1; }
-.stake-chosen-detail { font-size: 0.75rem; color: var(--paper-dim); line-height: 1.3; }
+/* Stake Breakdown Bar */
+.stake-breakdown-bar {
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(196, 165, 116, 0.05);
+  border: 1px solid var(--rule);
+  border-top: 1px solid var(--rule);
+}
+.breakdown-equation {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 8px;
+}
+.breakdown-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.breakdown-label {
+  font-size: 0.58rem;
+  color: var(--paper-dim);
+  letter-spacing: 0.1em;
+}
+.breakdown-val {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--paper);
+}
+.credit-val {
+  color: #70a27d;
+}
+.pay-val {
+  color: var(--gold);
+  font-size: 1.3rem;
+}
+.breakdown-op {
+  font-size: 1.2rem;
+  color: var(--paper-dim);
+  font-weight: bold;
+}
+.breakdown-summary-line {
+  font-size: 0.8rem;
+  color: var(--paper-dim);
+}
+.breakdown-summary-line strong {
+  color: var(--gold);
+}
 
 /* Previews in Takeover Modal */
 .preview-tabs { display: flex; gap: 8px; margin: 16px 0; border-bottom: 1px solid var(--rule); }

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { and, eq, or } from "drizzle-orm";
+import { db } from "@/db";
+import { reigns } from "@/db/schema";
 import { canonicalUrl, nextStealPrice } from "@/lib/format";
 import { paymentProvider } from "@/lib/payments";
 import { getThrone } from "@/lib/thrones";
@@ -92,12 +95,29 @@ export async function POST(request: Request) {
     }
 
     const formattedCta = ctaLabel.replace("{Product}", name);
-    const isUnpaidDefault = throne.stakeCents === 0 && throne.kingName === throne.defaultKingName;
-    const minPrice = nextStealPrice(throne.stakeCents, isUnpaidDefault);
-    const price = chosenStakeCents && chosenStakeCents >= minPrice ? chosenStakeCents : minPrice;
-    const base = getBaseUrl(request);
-
     const normalizedHandle = productXHandle.replace(/^@/, "").trim();
+
+    let userMaxPreviousStake = 0;
+    const userFormerReigns = await db
+      .select({ amountCents: reigns.amountCents })
+      .from(reigns)
+      .where(
+        and(
+          eq(reigns.throneId, throne.id),
+          eq(reigns.status, "former"),
+          or(eq(reigns.userId, user.id), eq(reigns.productXHandle, normalizedHandle))
+        )
+      );
+    userMaxPreviousStake = userFormerReigns.reduce((max, r) => Math.max(max, r.amountCents), 0);
+
+    const isUnpaidDefault = throne.stakeCents === 0 && throne.kingName === throne.defaultKingName;
+    const minTargetStake = nextStealPrice(throne.stakeCents, isUnpaidDefault);
+    const targetStake = chosenStakeCents && chosenStakeCents >= minTargetStake ? chosenStakeCents : minTargetStake;
+    const amountToCharge = userMaxPreviousStake > 0
+      ? Math.max(100, targetStake - userMaxPreviousStake)
+      : targetStake;
+
+    const base = getBaseUrl(request);
 
     const checkout = await paymentProvider.createCheckout({
       throneSlug: throne.slug,
@@ -110,7 +130,7 @@ export async function POST(request: Request) {
       offerPitch,
       ctaLabel: formattedCta,
       offerExpiresAt: offerExpiresAt ? new Date(offerExpiresAt) : undefined,
-      amountCents: price,
+      amountCents: amountToCharge,
       expectedPreviousKing: throne.kingName,
       expectedPreviousStakeCents: throne.stakeCents,
       successUrl: `${base}/checkout/return?ok=1`,

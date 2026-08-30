@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { db, ensureDatabaseReady, pool } from "@/db";
 import { checkouts, reigns, thrones } from "@/db/schema";
@@ -73,10 +73,32 @@ export async function applySteal(checkoutId: string): Promise<ApplyStealResult> 
 
       if (!throne) return { outcome: "missing" };
 
-      const isUnpaidDefault = throne.stakeCents === 0 && throne.kingName === throne.defaultKingName;
-      const requiredPrice = nextStealPrice(throne.stakeCents, isUnpaidDefault);
+      let userMaxPreviousStake = 0;
+      if (checkout.userId || checkout.productXHandle) {
+        const userFormerReigns = await tx
+          .select({ amountCents: reigns.amountCents })
+          .from(reigns)
+          .where(
+            and(
+              eq(reigns.throneId, throne.id),
+              eq(reigns.status, "former"),
+              checkout.userId && checkout.productXHandle
+                ? or(eq(reigns.userId, checkout.userId), eq(reigns.productXHandle, checkout.productXHandle))
+                : checkout.userId
+                  ? eq(reigns.userId, checkout.userId)
+                  : eq(reigns.productXHandle, checkout.productXHandle!)
+            )
+          );
+        userMaxPreviousStake = userFormerReigns.reduce((max, r) => Math.max(max, r.amountCents), 0);
+      }
 
-      if (checkout.amountCents !== requiredPrice || checkout.url === throne.kingUrl) {
+      const isUnpaidDefault = throne.stakeCents === 0 && throne.kingName === throne.defaultKingName;
+      const minRequiredTargetStake = nextStealPrice(throne.stakeCents, isUnpaidDefault);
+      const minNetPayment = userMaxPreviousStake > 0
+        ? Math.max(100, minRequiredTargetStake - userMaxPreviousStake)
+        : minRequiredTargetStake;
+
+      if (checkout.amountCents < minNetPayment || checkout.url === throne.kingUrl) {
         await tx.update(checkouts).set({ status: "stale" }).where(eq(checkouts.id, checkout.id));
         return { outcome: "stale" };
       }
@@ -90,6 +112,7 @@ export async function applySteal(checkoutId: string): Promise<ApplyStealResult> 
         .where(and(eq(reigns.throneId, throne.id), eq(reigns.status, "current")));
 
       const publicId = generatePublicId(10);
+      const newTotalStake = userMaxPreviousStake + checkout.amountCents;
 
       await tx.insert(reigns).values({
         id: randomUUID(),
@@ -104,7 +127,7 @@ export async function applySteal(checkoutId: string): Promise<ApplyStealResult> 
         offerPitch: checkout.offerPitch,
         ctaLabel: checkout.ctaLabel,
         offerExpiresAt: checkout.offerExpiresAt,
-        amountCents: checkout.amountCents,
+        amountCents: newTotalStake,
         fromName: throne.kingName,
         fromUrl: throne.kingUrl,
         fromStakeCents: throne.stakeCents,
@@ -119,7 +142,7 @@ export async function applySteal(checkoutId: string): Promise<ApplyStealResult> 
         .set({
           kingName: checkout.name,
           kingUrl: checkout.url,
-          stakeCents: checkout.amountCents,
+          stakeCents: newTotalStake,
           reignStartedAt: new Date(),
           updatedAt: new Date(),
         })

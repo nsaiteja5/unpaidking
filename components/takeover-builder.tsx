@@ -3,12 +3,26 @@ import { useState, useEffect } from "react";
 import { dollars, nextStealPrice } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth";
 
+type FormerReignSummary = {
+  id: string;
+  userId: string | null;
+  productXHandle: string | null;
+  kingName: string;
+  kingUrl: string;
+  amountCents: number;
+  offerHeadline: string | null;
+  offerPitch: string | null;
+  ctaLabel: string | null;
+  productLogoUrl: string | null;
+};
+
 type Props = {
   slug: string;
   category: string;
   currentKing: string;
   stakeCents: number;
   currentUser?: SessionUser | null;
+  formerReigns?: FormerReignSummary[];
   onClose?: () => void;
 };
 
@@ -26,30 +40,47 @@ export function TakeoverBuilder({
   currentKing,
   stakeCents,
   currentUser,
+  formerReigns,
   onClose,
 }: Props) {
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [previewTab, setPreviewTab] = useState<"throne" | "card">("throne");
   const [user, setUser] = useState<SessionUser | null>(currentUser ?? null);
 
-  // Step 0: Stake
-  const minPrice = nextStealPrice(stakeCents, stakeCents === 0);
-  const [chosenStakeCents, setChosenStakeCents] = useState(minPrice);
-  const [customInput, setCustomInput] = useState("");
-  const [usingCustom, setUsingCustom] = useState(false);
+  // Detect if user previously reigned on this throne
+  const userFormerReigns = (formerReigns || []).filter(
+    (r) =>
+      user &&
+      (r.userId === user.id ||
+        (r.productXHandle &&
+          user.xHandle &&
+          r.productXHandle.toLowerCase() === user.xHandle.toLowerCase()))
+  );
+  const userMaxPreviousStake = userFormerReigns.reduce((max, r) => Math.max(max, r.amountCents), 0);
+  const latestFormerReign = userFormerReigns[0];
+  const isReconquer = userMaxPreviousStake > 0;
 
-  // Quick-pick tiers based on minimum price
-  const presetTiers = [
-    { cents: minPrice, label: dollars(minPrice), tag: "MINIMUM" },
-    { cents: minPrice + 1600, label: dollars(minPrice + 1600), tag: "BOLD" },
-    { cents: minPrice + 4100, label: dollars(minPrice + 4100), tag: "FORTRESS" },
-  ];
+  // Step 0: Stake calculations
+  const minTargetStakeCents = nextStealPrice(stakeCents, stakeCents === 0);
+  const [chosenStakeCents, setChosenStakeCents] = useState(minTargetStakeCents);
+  const [inputValue, setInputValue] = useState(String(Math.ceil(minTargetStakeCents / 100)));
 
-  // Step 1: Product
-  const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
-  const [handle, setHandle] = useState(currentUser?.xHandle ? `@${currentUser.xHandle}` : "");
-  const [logoUrl, setLogoUrl] = useState("");
+  // Net out-of-pocket payment
+  const currentNetToPay = isReconquer
+    ? Math.max(100, chosenStakeCents - userMaxPreviousStake)
+    : chosenStakeCents;
+
+  // Step 1: Product (Pre-filled from previous reign if re-conquering)
+  const [name, setName] = useState(latestFormerReign?.kingName || "");
+  const [url, setUrl] = useState(latestFormerReign?.kingUrl || "");
+  const [handle, setHandle] = useState(
+    latestFormerReign?.productXHandle
+      ? `@${latestFormerReign.productXHandle}`
+      : currentUser?.xHandle
+        ? `@${currentUser.xHandle}`
+        : ""
+  );
+  const [logoUrl, setLogoUrl] = useState(latestFormerReign?.productLogoUrl || "");
   const [attestation, setAttestation] = useState(false);
 
   useEffect(() => {
@@ -64,46 +95,45 @@ export function TakeoverBuilder({
         })
         .catch(() => {});
     }
-  }, [user]);
+  }, [user, handle]);
 
-  // Step 2: Offer
-  const [headline, setHeadline] = useState("");
-  const [pitch, setPitch] = useState("");
-  const [ctaChoice, setCtaChoice] = useState(CTA_OPTIONS[0]);
+  // Step 2: Offer (Pre-filled from previous reign if re-conquering)
+  const [headline, setHeadline] = useState(latestFormerReign?.offerHeadline || "");
+  const [pitch, setPitch] = useState(latestFormerReign?.offerPitch || "");
+  const [ctaChoice, setCtaChoice] = useState(latestFormerReign?.ctaLabel || CTA_OPTIONS[0]);
   const [expiresAt, setExpiresAt] = useState("");
 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const price = chosenStakeCents;
   const formattedCta = ctaChoice.replace("{Product}", name || "Product");
 
-  function handleCustomInputChange(val: string) {
-    setCustomInput(val);
-    const num = parseInt(val, 10);
-    if (!isNaN(num) && num >= Math.ceil(minPrice / 100)) {
+  function handleAmountChange(raw: string) {
+    // Only allow digits
+    const cleaned = raw.replace(/[^0-9]/g, "");
+    setInputValue(cleaned);
+    const num = parseInt(cleaned, 10);
+    if (!isNaN(num) && num > 0) {
       setChosenStakeCents(num * 100);
     }
   }
 
-  function handleSelectPreset(cents: number) {
-    setUsingCustom(false);
-    setCustomInput("");
-    setChosenStakeCents(cents);
+  function applyStakeDollars(dollarsAmount: number) {
+    const clamped = Math.max(Math.ceil(minTargetStakeCents / 100), dollarsAmount);
+    setChosenStakeCents(clamped * 100);
+    setInputValue(String(clamped));
+    setError("");
   }
 
-  function handleUseCustom() {
-    setUsingCustom(true);
-    const num = parseInt(customInput, 10);
-    if (!isNaN(num) && num >= Math.ceil(minPrice / 100)) {
-      setChosenStakeCents(num * 100);
-    }
+  function addStakeDollars(delta: number) {
+    const currentDollars = Math.ceil(chosenStakeCents / 100);
+    applyStakeDollars(currentDollars + delta);
   }
 
   function validateStep0() {
     setError("");
-    if (chosenStakeCents < minPrice) {
-      setError(`Minimum stake is ${dollars(minPrice)}. The current king must be outbid.`);
+    if (chosenStakeCents < minTargetStakeCents) {
+      setError(`Minimum throne stake is ${dollars(minTargetStakeCents)} to outbid ${currentKing}.`);
       return false;
     }
     if (chosenStakeCents > 100000) {
@@ -259,84 +289,102 @@ export function TakeoverBuilder({
         </div>
       )}
 
-      {/* STEP 0: Stake Selection */}
+      {/* STEP 0: Straightforward Stake Selection with Blinker */}
       {step === 0 && (
         <div className="builder-step step-stake">
-          <h2 className="builder-heading display">Set your stake.</h2>
+          <h2 className="builder-heading display">
+            {isReconquer ? "Re-conquer your throne." : "Set your stake."}
+          </h2>
           <p className="builder-sub">
-            Higher stakes cost more to dethrone. Stake your claim on the <strong>{category}</strong> throne.
+            {isReconquer
+              ? `You previously staked ${dollars(userMaxPreviousStake)}. Outbid ${currentKing} to take back your crown.`
+              : `Challenging ${currentKing} on the ${category} throne.`}
           </p>
 
-          <div className="stake-context">
-            <div className="stake-context-row">
-              <span className="stake-label smallcaps">Current King</span>
-              <span className="stake-value">{currentKing}</span>
-            </div>
-            <div className="stake-context-row">
-              <span className="stake-label smallcaps">Their Stake</span>
-              <span className="stake-value money">{stakeCents === 0 ? "$0 (Unpaid)" : dollars(stakeCents)}</span>
-            </div>
-            <div className="stake-context-row stake-min-row">
-              <span className="stake-label smallcaps">Minimum to Conquer</span>
-              <span className="stake-value money stake-min-value">{dollars(minPrice)}</span>
-            </div>
-          </div>
+          <div className="stake-hero-card">
+            <p className="smallcaps stake-hero-tag">
+              {isReconquer ? "YOUR NEW THRONE STAKE" : "YOUR THRONE STAKE"}
+            </p>
 
-          <div className="stake-tiers">
-            {presetTiers.map((tier) => (
+            <div className="stake-input-container">
+              <span className="stake-symbol display">$</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                className="stake-hero-input display money"
+                value={inputValue}
+                onChange={(e) => handleAmountChange(e.target.value)}
+                placeholder={String(Math.ceil(minTargetStakeCents / 100))}
+                autoFocus
+              />
+              <span className="stake-cursor-blink" aria-hidden="true" />
+            </div>
+
+            {/* Quick Add Pills */}
+            <div className="stake-pills-row">
               <button
-                key={tier.cents}
                 type="button"
-                className={`stake-tier-btn ${!usingCustom && chosenStakeCents === tier.cents ? "is-selected" : ""}`}
-                onClick={() => handleSelectPreset(tier.cents)}
+                className={`stake-pill ${chosenStakeCents === minTargetStakeCents ? "is-active" : ""}`}
+                onClick={() => applyStakeDollars(Math.ceil(minTargetStakeCents / 100))}
               >
-                <span className="tier-amount money">{tier.label}</span>
-                <span className="tier-tag smallcaps">{tier.tag}</span>
-                <span className="tier-detail">
-                  {tier.tag === "MINIMUM"
-                    ? "Take the throne."
-                    : tier.tag === "BOLD"
-                      ? `Next challenger pays ${dollars(tier.cents + 100)}+`
-                      : `Next challenger pays ${dollars(tier.cents + 100)}+`}
-                </span>
+                Min ({dollars(minTargetStakeCents)})
               </button>
-            ))}
-          </div>
+              <button
+                type="button"
+                className="stake-pill"
+                onClick={() => addStakeDollars(5)}
+              >
+                +$5
+              </button>
+              <button
+                type="button"
+                className="stake-pill"
+                onClick={() => addStakeDollars(10)}
+              >
+                +$10
+              </button>
+              <button
+                type="button"
+                className="stake-pill"
+                onClick={() => addStakeDollars(25)}
+              >
+                +$25
+              </button>
+              <button
+                type="button"
+                className="stake-pill"
+                onClick={() => addStakeDollars(50)}
+              >
+                +$50
+              </button>
+            </div>
 
-          <div className="stake-custom-section">
-            <button
-              type="button"
-              className={`stake-custom-toggle ${usingCustom ? "is-active" : ""}`}
-              onClick={handleUseCustom}
-            >
-              Or set a custom amount
-            </button>
-            {usingCustom && (
-              <div className="stake-custom-input-wrap">
-                <span className="stake-currency-sign">$</span>
-                <input
-                  type="number"
-                  className="stake-custom-input"
-                  value={customInput}
-                  onChange={(e) => handleCustomInputChange(e.target.value)}
-                  placeholder={String(Math.ceil(minPrice / 100))}
-                  min={Math.ceil(minPrice / 100)}
-                  max={1000}
-                  autoFocus
-                />
-                <span className="stake-custom-hint smallcaps">
-                  Min ${Math.ceil(minPrice / 100)} · Max $1,000
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="stake-chosen-summary">
-            <span className="stake-chosen-label">Your stake</span>
-            <span className="stake-chosen-amount display money">{dollars(chosenStakeCents)}</span>
-            <span className="stake-chosen-detail">
-              Next challenger must pay at least {dollars(chosenStakeCents + 100)} to dethrone you.
-            </span>
+            {/* Real-time Math Breakdown */}
+            <div className="stake-breakdown-bar">
+              {isReconquer ? (
+                <div className="breakdown-equation">
+                  <div className="breakdown-col">
+                    <span className="breakdown-label smallcaps">New Stake</span>
+                    <span className="breakdown-val money">{dollars(chosenStakeCents)}</span>
+                  </div>
+                  <span className="breakdown-op">−</span>
+                  <div className="breakdown-col">
+                    <span className="breakdown-label smallcaps">Past Credit</span>
+                    <span className="breakdown-val money credit-val">{dollars(userMaxPreviousStake)}</span>
+                  </div>
+                  <span className="breakdown-op">=</span>
+                  <div className="breakdown-col highlight-col">
+                    <span className="breakdown-label smallcaps">You Pay Today</span>
+                    <span className="breakdown-val money pay-val">{dollars(currentNetToPay)}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="breakdown-summary-line">
+                  <span>Next challenger must pay <strong>{dollars(chosenStakeCents + 100)}</strong> to dethrone you.</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="builder-actions">
@@ -347,7 +395,7 @@ export function TakeoverBuilder({
                 if (validateStep0()) setStep(1);
               }}
             >
-              Lock Stake & Continue →
+              {isReconquer ? `Lock Stake · Pay ${dollars(currentNetToPay)} →` : "Lock Stake & Continue →"}
             </button>
           </div>
         </div>
@@ -358,7 +406,15 @@ export function TakeoverBuilder({
         <div className="builder-step step-1">
           <h2 className="builder-heading display">Who is taking this throne?</h2>
           <p className="builder-sub">
-            Challenging <strong>{currentKing}</strong> for the <strong>{category}</strong> throne · Stake: <strong className="money">{dollars(chosenStakeCents)}</strong>
+            {isReconquer ? (
+              <>
+                Reclaiming from <strong>{currentKing}</strong> · Throne Stake: <strong className="money">{dollars(chosenStakeCents)}</strong> (You pay <strong className="money">{dollars(currentNetToPay)}</strong>)
+              </>
+            ) : (
+              <>
+                Challenging <strong>{currentKing}</strong> for the <strong>{category}</strong> throne · Stake: <strong className="money">{dollars(chosenStakeCents)}</strong>
+              </>
+            )}
           </p>
 
           <form
@@ -517,10 +573,14 @@ export function TakeoverBuilder({
         </div>
       )}
 
-      {/* STEP 3: Preview */}
+      {/* STEP 3: Preview & Checkout */}
       {step === 3 && (
         <div className="builder-step step-3">
-          <h2 className="builder-heading display">This is what your {dollars(price)} creates.</h2>
+          <h2 className="builder-heading display">
+            {isReconquer
+              ? `Reclaiming the ${category} throne for ${dollars(currentNetToPay)}.`
+              : `This is what your ${dollars(chosenStakeCents)} creates.`}
+          </h2>
 
           {/* Preview Tabs */}
           <div className="preview-tabs" role="tablist">
@@ -547,8 +607,10 @@ export function TakeoverBuilder({
               <p className="mock-occupied">is occupied by</p>
               <h3 className="mock-king display">{name || "Your Product"}</h3>
               <div className="mock-verdict">
-                <span className="stamp stamp-live">CURRENT REIGN</span>
-                <span className="money">{dollars(price)}</span>
+                <span className="stamp stamp-live">
+                  {isReconquer ? "RECLAIMED REIGN" : "CURRENT REIGN"}
+                </span>
+                <span className="money">{dollars(chosenStakeCents)}</span>
               </div>
               <div className="mock-offer-box">
                 <p className="mock-headline">"{headline || "Your Offer Headline"}"</p>
@@ -570,7 +632,11 @@ export function TakeoverBuilder({
               </div>
               <div className="card-product">by {name || "Your Product"}</div>
               <div className="card-footer">
-                <span className="card-dethrone">DETHRONED {currentKing.toUpperCase()}</span>
+                <span className="card-dethrone">
+                  {isReconquer
+                    ? `RECLAIMED FROM ${currentKing.toUpperCase()}`
+                    : `DETHRONED ${currentKing.toUpperCase()}`}
+                </span>
                 <span className="card-link">unpaidking.lol/r/...</span>
               </div>
             </div>
@@ -583,7 +649,7 @@ export function TakeoverBuilder({
               <ul>
                 <li>The live {category} throne until the next paid takeover</li>
                 <li>A permanent page that always promotes {name || "your product"}</li>
-                <li>A share card built around your offer</li>
+                <li>A brutal share card built around your offer and conquest</li>
                 <li>Tracked visits and outbound clicks</li>
               </ul>
             </div>
@@ -610,7 +676,11 @@ export function TakeoverBuilder({
               disabled={busy}
               onClick={submitTakeover}
             >
-              {busy ? "PREPARING CHECKOUT..." : `CREATE MY REIGN — ${dollars(price)}`}
+              {busy
+                ? "PREPARING CHECKOUT..."
+                : isReconquer
+                  ? `RECLAIM MY THRONE — ${dollars(currentNetToPay)}`
+                  : `CREATE MY REIGN — ${dollars(chosenStakeCents)}`}
             </button>
           </div>
         </div>

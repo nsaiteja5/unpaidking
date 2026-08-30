@@ -57,6 +57,7 @@ export default async function ThronePage({ params }: Props) {
           currentKing={throne.kingName}
           stakeCents={throne.stakeCents}
           currentUser={user}
+          formerReigns={throne.formerReigns}
         />
       </div>
 

@@ -54,6 +54,20 @@ export function ThroneStage({
           currentReign.productXHandle.toLowerCase() === currentUser.xHandle.toLowerCase()))
   );
 
+  // Detect if current user previously held this throne and was dethroned
+  const userFormerReigns = (throne.formerReigns || []).filter(
+    (r) =>
+      currentUser &&
+      (r.userId === currentUser.id ||
+        (r.productXHandle &&
+          currentUser.xHandle &&
+          r.productXHandle.toLowerCase() === currentUser.xHandle.toLowerCase()))
+  );
+  const userMaxPreviousStake = userFormerReigns.reduce((max, r) => Math.max(max, r.amountCents), 0);
+  const isReconquer = userMaxPreviousStake > 0 && !isOwner;
+  const minRequiredTargetStake = nextStealPrice(stakeCents, isDefault);
+  const minNetReconquerToPay = Math.max(100, minRequiredTargetStake - userMaxPreviousStake);
+
   const offerHeadline = currentReign?.offerHeadline;
   const offerPitch = currentReign?.offerPitch;
   const ctaLabel = currentReign?.ctaLabel || `Try ${throne.kingName}`;
@@ -192,10 +206,18 @@ export function ThroneStage({
                 type="button"
                 onClick={handleDethroneClick}
               >
-                <span>CONQUER THIS THRONE — $9</span>
+                <span>
+                  {isReconquer
+                    ? `RE-CONQUER YOUR THRONE — ${dollars(minNetReconquerToPay)}`
+                    : "CONQUER THIS THRONE — $9"}
+                </span>
                 <span aria-hidden="true">→</span>
               </button>
-              <p className="dethrone-subcopy">Take the live throne. Keep your campaign forever.</p>
+              <p className="dethrone-subcopy">
+                {isReconquer
+                  ? `You already staked ${dollars(userMaxPreviousStake)}. Pay just ${dollars(minNetReconquerToPay)} more to take it back.`
+                  : "Take the live throne. Keep your campaign forever."}
+              </p>
             </div>
           </div>
         ) : (
@@ -208,15 +230,18 @@ export function ThroneStage({
               )}
               {offerPitch && <p className="live-offer-pitch">{offerPitch}</p>}
 
-              <a
-                href={outboundHref}
-                target="_blank"
-                rel="noopener nofollow"
-                className="visitor-outbound-cta"
-              >
-                <span>{ctaLabel}</span>
-                <span aria-hidden="true">↗</span>
-              </a>
+              {/* Occupant's CTA Link */}
+              <div className="visitor-cta-wrap">
+                <a
+                  href={outboundHref}
+                  target="_blank"
+                  rel="noopener nofollow"
+                  className="visitor-cta-btn"
+                >
+                  <span>{ctaLabel}</span>
+                  <span aria-hidden="true">↗</span>
+                </a>
+              </div>
 
               <div className="stage-traffic-pill">
                 <span>{reignStatsLine}</span>
@@ -273,16 +298,26 @@ export function ThroneStage({
               /* VISITOR / CHALLENGER TAKEOVER ZONE */
               <div className="founder-takeover-zone">
                 <div className="takeover-divider" />
-                <p className="founder-kicker smallcaps">SELL A COMPETING PRODUCT?</p>
+                <p className="founder-kicker smallcaps">
+                  {isReconquer ? "THEY TOOK YOUR THRONE" : "SELL A COMPETING PRODUCT?"}
+                </p>
                 <button
-                  className="dethrone-button secondary-takeover-btn"
+                  className={`dethrone-button ${isReconquer ? "primary-takeover-btn" : "secondary-takeover-btn"}`}
                   type="button"
                   onClick={handleDethroneClick}
                 >
-                  <span>DETHRONE {throne.kingName.toUpperCase()} — {nextPrice}</span>
+                  <span>
+                    {isReconquer
+                      ? `RE-CONQUER YOUR THRONE — ${dollars(minNetReconquerToPay)}`
+                      : `DETHRONE ${throne.kingName.toUpperCase()} — ${nextPrice}`}
+                  </span>
                   <span aria-hidden="true">→</span>
                 </button>
-                <p className="dethrone-subcopy">Take the live throne. Keep your campaign forever.</p>
+                <p className="dethrone-subcopy">
+                  {isReconquer
+                    ? `You already staked ${dollars(userMaxPreviousStake)}. Pay just ${dollars(minNetReconquerToPay)} more to reclaim the live throne.`
+                    : "Take the live throne. Keep your campaign forever."}
+                </p>
               </div>
             )}
           </div>

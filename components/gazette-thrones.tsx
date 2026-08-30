@@ -210,6 +210,7 @@ export function GazetteThrones({ thrones }: { thrones: ThroneView[] }) {
               currentKing={selectedForTakeover.kingName}
               stakeCents={selectedForTakeover.stakeCents}
               currentUser={currentUser}
+              formerReigns={selectedForTakeover.formerReigns}
               onClose={() => setSelectedForTakeover(null)}
             />
           </div>

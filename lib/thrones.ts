@@ -13,6 +13,18 @@ export type ThroneView = Throne & {
   lastFromName: string | null;
   visits7d: number;
   clicks7d: number;
+  formerReigns?: {
+    id: string;
+    userId: string | null;
+    productXHandle: string | null;
+    kingName: string;
+    kingUrl: string;
+    amountCents: number;
+    offerHeadline: string | null;
+    offerPitch: string | null;
+    ctaLabel: string | null;
+    productLogoUrl: string | null;
+  }[];
 };
 
 export function isDefaultKing(slug: string, name: string) {
@@ -34,6 +46,23 @@ export async function toThroneView(throne: Throne): Promise<ThroneView> {
     .orderBy(desc(reigns.paidAt))
     .limit(1);
 
+  const formerReignsList = await db
+    .select({
+      id: reigns.id,
+      userId: reigns.userId,
+      productXHandle: reigns.productXHandle,
+      kingName: reigns.kingName,
+      kingUrl: reigns.kingUrl,
+      amountCents: reigns.amountCents,
+      offerHeadline: reigns.offerHeadline,
+      offerPitch: reigns.offerPitch,
+      ctaLabel: reigns.ctaLabel,
+      productLogoUrl: reigns.productLogoUrl,
+    })
+    .from(reigns)
+    .where(and(eq(reigns.throneId, throne.id), eq(reigns.status, "former")))
+    .orderBy(desc(reigns.paidAt));
+
   const isDefault = throne.stakeCents === 0 && throne.kingName === throne.defaultKingName;
   const stats = await getThroneStats7d(throne.id);
 
@@ -44,6 +73,7 @@ export async function toThroneView(throne: Throne): Promise<ThroneView> {
     lastFromName: lastReign?.fromName ?? null,
     visits7d: stats.visits7d,
     clicks7d: stats.clicks7d,
+    formerReigns: formerReignsList,
   };
 }
 
