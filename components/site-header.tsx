@@ -1,0 +1,137 @@
+"use client";
+import { useState, useEffect, useRef } from "react";
+import { Wordmark } from "@/components/wordmark";
+import type { SessionUser } from "@/lib/auth";
+
+type Props = {
+  initialUser?: SessionUser | null;
+  onFilterUserThrones?: (handle: string) => void;
+};
+
+export function SiteHeader({ initialUser, onFilterUserThrones }: Props) {
+  const [user, setUser] = useState<SessionUser | null>(initialUser ?? null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Fetch latest user session
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.user) setUser(data.user);
+        else setUser(null);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [menuOpen]);
+
+  const handleSignIn = () => {
+    setSigningIn(true);
+    const returnTo = typeof window !== "undefined" ? window.location.pathname + window.location.search : "/";
+    window.location.assign(`/api/auth/x/login?returnTo=${encodeURIComponent(returnTo)}`);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      setUser(null);
+      setMenuOpen(false);
+      window.location.reload();
+    } catch {
+      window.location.assign("/api/auth/logout");
+    }
+  };
+
+  return (
+    <header className="site-header">
+      <div className="header-row">
+        <Wordmark />
+
+        <nav className="nav" aria-label="Primary">
+          <a href="/rules">Rules</a>
+          <span>·</span>
+          <a href="/how">How it works</a>
+          <span>·</span>
+
+          {user ? (
+            <div className="user-menu-container" ref={menuRef}>
+              <button
+                type="button"
+                className="user-profile-button"
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-expanded={menuOpen}
+                aria-haspopup="true"
+              >
+                {user.xAvatarUrl ? (
+                  <img
+                    src={user.xAvatarUrl}
+                    alt={`@${user.xHandle}`}
+                    className="user-avatar-img"
+                    width={20}
+                    height={20}
+                  />
+                ) : (
+                  <span className="user-avatar-fallback">
+                    {user.xHandle.charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="user-handle-text">@{user.xHandle}</span>
+                <span className="user-menu-chevron" aria-hidden="true">▾</span>
+              </button>
+
+              {menuOpen && (
+                <div className="user-dropdown-menu" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="dropdown-item"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      if (onFilterUserThrones) {
+                        onFilterUserThrones(user.xHandle);
+                      } else {
+                        window.location.assign(`/?filter=${encodeURIComponent(user.xHandle)}`);
+                      }
+                    }}
+                  >
+                    Your thrones
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="dropdown-item dropdown-item-signout"
+                    onClick={handleSignOut}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="x-signin-link"
+              onClick={handleSignIn}
+              disabled={signingIn}
+            >
+              {signingIn ? "Connecting..." : "Sign in with X"}
+            </button>
+          )}
+        </nav>
+      </div>
+      <p className="tagline">They already sit on the throne. They never paid.</p>
+    </header>
+  );
+}

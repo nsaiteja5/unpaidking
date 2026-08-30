@@ -1,0 +1,3 @@
+import { ImageResponse } from "next/og";
+export const dynamic = "force-dynamic";
+export function GET() { return new ImageResponse(<div style={{ alignItems: "center", background: "#14110e", color: "#e8dcc8", display: "flex", flexDirection: "column", height: "100%", justifyContent: "center", width: "100%" }}><div style={{ display: "flex", fontFamily: "serif", fontSize: 112, letterSpacing: -7 }}>Unpaid King</div><div style={{ color: "#b7a890", display: "flex", fontFamily: "serif", fontSize: 38, marginTop: 38 }}>They already sit on the throne. They never paid.</div></div>, { width: 1200, height: 630, headers: { "Cache-Control": "s-maxage=60, stale-while-revalidate=600" } }); }

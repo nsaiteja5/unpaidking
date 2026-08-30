@@ -1,0 +1,4 @@
+"use client";
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+export function LiveRefresh({ slug, updatedAt }: { slug: string; updatedAt: number }) { const router = useRouter(); const latest = useRef(updatedAt); useEffect(() => { const timer = window.setInterval(async () => { try { const response = await fetch(`/api/thrones/${slug}`, { cache: "no-store" }); const data = await response.json(); if (response.ok && data.updatedAt !== latest.current) { latest.current = data.updatedAt; const stage = document.querySelector(".throne-room-stage"); stage?.classList.add("throne-flash"); window.setTimeout(() => router.refresh(), 180); } } catch { /* Keep the current reign visible. */ } }, 5000); return () => window.clearInterval(timer); }, [router, slug]); return null; }
