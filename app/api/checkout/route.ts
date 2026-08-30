@@ -21,6 +21,7 @@ const inputSchema = z.object({
   attestation: z.boolean().refine((val) => val === true, {
     message: "You must attest that your product directly competes in this category.",
   }),
+  chosenStakeCents: z.number().int().min(100).max(100000).optional(),
 });
 
 export async function POST(request: Request) {
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
       offerPitch,
       ctaLabel,
       offerExpiresAt,
+      chosenStakeCents,
     } = parsed.data;
 
     let url: string;
@@ -91,7 +93,8 @@ export async function POST(request: Request) {
 
     const formattedCta = ctaLabel.replace("{Product}", name);
     const isUnpaidDefault = throne.stakeCents === 0 && throne.kingName === throne.defaultKingName;
-    const price = nextStealPrice(throne.stakeCents, isUnpaidDefault);
+    const minPrice = nextStealPrice(throne.stakeCents, isUnpaidDefault);
+    const price = chosenStakeCents && chosenStakeCents >= minPrice ? chosenStakeCents : minPrice;
     const base = getBaseUrl(request);
 
     const normalizedHandle = productXHandle.replace(/^@/, "").trim();

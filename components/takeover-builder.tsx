@@ -28,9 +28,22 @@ export function TakeoverBuilder({
   currentUser,
   onClose,
 }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [previewTab, setPreviewTab] = useState<"throne" | "card">("throne");
   const [user, setUser] = useState<SessionUser | null>(currentUser ?? null);
+
+  // Step 0: Stake
+  const minPrice = nextStealPrice(stakeCents, stakeCents === 0);
+  const [chosenStakeCents, setChosenStakeCents] = useState(minPrice);
+  const [customInput, setCustomInput] = useState("");
+  const [usingCustom, setUsingCustom] = useState(false);
+
+  // Quick-pick tiers based on minimum price
+  const presetTiers = [
+    { cents: minPrice, label: dollars(minPrice), tag: "MINIMUM" },
+    { cents: minPrice + 1600, label: dollars(minPrice + 1600), tag: "BOLD" },
+    { cents: minPrice + 4100, label: dollars(minPrice + 4100), tag: "FORTRESS" },
+  ];
 
   // Step 1: Product
   const [name, setName] = useState("");
@@ -62,8 +75,43 @@ export function TakeoverBuilder({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const price = nextStealPrice(stakeCents, stakeCents === 0);
+  const price = chosenStakeCents;
   const formattedCta = ctaChoice.replace("{Product}", name || "Product");
+
+  function handleCustomInputChange(val: string) {
+    setCustomInput(val);
+    const num = parseInt(val, 10);
+    if (!isNaN(num) && num >= Math.ceil(minPrice / 100)) {
+      setChosenStakeCents(num * 100);
+    }
+  }
+
+  function handleSelectPreset(cents: number) {
+    setUsingCustom(false);
+    setCustomInput("");
+    setChosenStakeCents(cents);
+  }
+
+  function handleUseCustom() {
+    setUsingCustom(true);
+    const num = parseInt(customInput, 10);
+    if (!isNaN(num) && num >= Math.ceil(minPrice / 100)) {
+      setChosenStakeCents(num * 100);
+    }
+  }
+
+  function validateStep0() {
+    setError("");
+    if (chosenStakeCents < minPrice) {
+      setError(`Minimum stake is ${dollars(minPrice)}. The current king must be outbid.`);
+      return false;
+    }
+    if (chosenStakeCents > 100000) {
+      setError("Maximum stake is $1,000 per throne.");
+      return false;
+    }
+    return true;
+  }
 
   function validateStep1() {
     setError("");
@@ -131,6 +179,7 @@ export function TakeoverBuilder({
           ctaLabel: ctaChoice,
           offerExpiresAt: expiresAt || undefined,
           attestation: true,
+          chosenStakeCents: chosenStakeCents,
         }),
       });
 
@@ -160,30 +209,40 @@ export function TakeoverBuilder({
         <div className="progress-steps">
           <button
             type="button"
-            className={`step-badge ${step === 1 ? "is-active" : step > 1 ? "is-done" : ""}`}
-            onClick={() => setStep(1)}
+            className={`step-badge ${step === 0 ? "is-active" : step > 0 ? "is-done" : ""}`}
+            onClick={() => setStep(0)}
           >
-            1 · PRODUCT
+            1 · STAKE
+          </button>
+          <span className="step-sep">→</span>
+          <button
+            type="button"
+            className={`step-badge ${step === 1 ? "is-active" : step > 1 ? "is-done" : ""}`}
+            onClick={() => {
+              if (validateStep0()) setStep(1);
+            }}
+          >
+            2 · PRODUCT
           </button>
           <span className="step-sep">→</span>
           <button
             type="button"
             className={`step-badge ${step === 2 ? "is-active" : step > 2 ? "is-done" : ""}`}
             onClick={() => {
-              if (validateStep1()) setStep(2);
+              if (validateStep0() && validateStep1()) setStep(2);
             }}
           >
-            2 · OFFER
+            3 · OFFER
           </button>
           <span className="step-sep">→</span>
           <button
             type="button"
             className={`step-badge ${step === 3 ? "is-active" : ""}`}
             onClick={() => {
-              if (validateStep1() && validateStep2()) setStep(3);
+              if (validateStep0() && validateStep1() && validateStep2()) setStep(3);
             }}
           >
-            3 · PREVIEW
+            4 · PREVIEW
           </button>
         </div>
 
@@ -200,12 +259,106 @@ export function TakeoverBuilder({
         </div>
       )}
 
+      {/* STEP 0: Stake Selection */}
+      {step === 0 && (
+        <div className="builder-step step-stake">
+          <h2 className="builder-heading display">Set your stake.</h2>
+          <p className="builder-sub">
+            Higher stakes cost more to dethrone. Stake your claim on the <strong>{category}</strong> throne.
+          </p>
+
+          <div className="stake-context">
+            <div className="stake-context-row">
+              <span className="stake-label smallcaps">Current King</span>
+              <span className="stake-value">{currentKing}</span>
+            </div>
+            <div className="stake-context-row">
+              <span className="stake-label smallcaps">Their Stake</span>
+              <span className="stake-value money">{stakeCents === 0 ? "$0 (Unpaid)" : dollars(stakeCents)}</span>
+            </div>
+            <div className="stake-context-row stake-min-row">
+              <span className="stake-label smallcaps">Minimum to Conquer</span>
+              <span className="stake-value money stake-min-value">{dollars(minPrice)}</span>
+            </div>
+          </div>
+
+          <div className="stake-tiers">
+            {presetTiers.map((tier) => (
+              <button
+                key={tier.cents}
+                type="button"
+                className={`stake-tier-btn ${!usingCustom && chosenStakeCents === tier.cents ? "is-selected" : ""}`}
+                onClick={() => handleSelectPreset(tier.cents)}
+              >
+                <span className="tier-amount money">{tier.label}</span>
+                <span className="tier-tag smallcaps">{tier.tag}</span>
+                <span className="tier-detail">
+                  {tier.tag === "MINIMUM"
+                    ? "Take the throne."
+                    : tier.tag === "BOLD"
+                      ? `Next challenger pays ${dollars(tier.cents + 100)}+`
+                      : `Next challenger pays ${dollars(tier.cents + 100)}+`}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="stake-custom-section">
+            <button
+              type="button"
+              className={`stake-custom-toggle ${usingCustom ? "is-active" : ""}`}
+              onClick={handleUseCustom}
+            >
+              Or set a custom amount
+            </button>
+            {usingCustom && (
+              <div className="stake-custom-input-wrap">
+                <span className="stake-currency-sign">$</span>
+                <input
+                  type="number"
+                  className="stake-custom-input"
+                  value={customInput}
+                  onChange={(e) => handleCustomInputChange(e.target.value)}
+                  placeholder={String(Math.ceil(minPrice / 100))}
+                  min={Math.ceil(minPrice / 100)}
+                  max={1000}
+                  autoFocus
+                />
+                <span className="stake-custom-hint smallcaps">
+                  Min ${Math.ceil(minPrice / 100)} · Max $1,000
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="stake-chosen-summary">
+            <span className="stake-chosen-label">Your stake</span>
+            <span className="stake-chosen-amount display money">{dollars(chosenStakeCents)}</span>
+            <span className="stake-chosen-detail">
+              Next challenger must pay at least {dollars(chosenStakeCents + 100)} to dethrone you.
+            </span>
+          </div>
+
+          <div className="builder-actions">
+            <button
+              type="button"
+              className="steal-button next-button"
+              onClick={() => {
+                if (validateStep0()) setStep(1);
+              }}
+            >
+              Lock Stake & Continue →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* STEP 1: Product */}
       {step === 1 && (
         <div className="builder-step step-1">
           <h2 className="builder-heading display">Who is taking this throne?</h2>
           <p className="builder-sub">
-            Challenging <strong>{currentKing}</strong> for the <strong>{category}</strong> throne.
+            Challenging <strong>{currentKing}</strong> for the <strong>{category}</strong> throne · Stake: <strong className="money">{dollars(chosenStakeCents)}</strong>
           </p>
 
           <form
@@ -270,6 +423,13 @@ export function TakeoverBuilder({
             </label>
 
             <div className="builder-actions">
+              <button
+                type="button"
+                className="checkout-cancel"
+                onClick={() => setStep(0)}
+              >
+                ← Change Stake
+              </button>
               <button type="submit" className="steal-button next-button">
                 Continue to Offer →
               </button>
