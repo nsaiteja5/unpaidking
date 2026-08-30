@@ -7,7 +7,7 @@ import { ViewTracker } from "@/components/view-tracker";
 import type { ThroneView } from "@/lib/thrones";
 import type { SessionUser } from "@/lib/auth";
 
-const ROTATION_INTERVAL = 3000;
+const ROTATION_INTERVAL = 5000;
 const CROSSFADE_MS = 250;
 const POLL_INTERVAL = 5000;
 

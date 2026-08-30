@@ -110,21 +110,6 @@ export function SiteHeader({ initialUser, onFilterUserThrones }: Props) {
                   <button
                     type="button"
                     role="menuitem"
-                    className="dropdown-item"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      if (onFilterUserThrones) {
-                        onFilterUserThrones(user.xHandle);
-                      } else {
-                        window.location.assign(`/?filter=${encodeURIComponent(user.xHandle)}`);
-                      }
-                    }}
-                  >
-                    Your thrones
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
                     className="dropdown-item dropdown-item-signout"
                     onClick={handleSignOut}
                   >
