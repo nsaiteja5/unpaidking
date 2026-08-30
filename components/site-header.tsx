@@ -12,9 +12,23 @@ export function SiteHeader({ initialUser, onFilterUserThrones }: Props) {
   const [user, setUser] = useState<SessionUser | null>(initialUser ?? null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Check for auth_error in query string
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const errorParam = params.get("auth_error");
+      if (errorParam) {
+        setAuthError(errorParam);
+        // Clean URL query param without full reload
+        params.delete("auth_error");
+        const newSearch = params.toString() ? `?${params.toString()}` : "";
+        window.history.replaceState({}, "", `${window.location.pathname}${newSearch}`);
+      }
+    }
+
     // Fetch latest user session
     fetch("/api/auth/me")
       .then((res) => res.json())
@@ -131,6 +145,39 @@ export function SiteHeader({ initialUser, onFilterUserThrones }: Props) {
           )}
         </nav>
       </div>
+      {authError && (
+        <div style={{
+          marginTop: "0.75rem",
+          padding: "0.5rem 0.75rem",
+          background: "#fee2e2",
+          border: "1px solid #f87171",
+          borderRadius: "6px",
+          color: "#991b1b",
+          fontSize: "0.825rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "0.5rem"
+        }}>
+          <span>
+            <strong>Twitter sign-in notice:</strong> {
+              authError === "missing_client_id" ? "X_CLIENT_ID is not configured in Vercel." :
+              authError === "token_exchange_failed" ? "Twitter token exchange failed. Check that callback URL is set to https://unpaidking.lol/api/auth/x/callback in Twitter Developer portal." :
+              authError === "cancelled" ? "Sign in was cancelled." :
+              authError === "state_mismatch" ? "OAuth session expired. Please try connecting again." :
+              `Authentication error (${authError}).`
+            }
+          </span>
+          <button
+            type="button"
+            onClick={() => setAuthError(null)}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "#991b1b", fontWeight: "bold" }}
+            aria-label="Dismiss error"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <p className="tagline">They already sit on the throne. They never paid.</p>
     </header>
   );
