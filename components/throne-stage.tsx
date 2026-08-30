@@ -192,7 +192,7 @@ export function ThroneStage({
                 type="button"
                 onClick={handleDethroneClick}
               >
-                <span>BUILD YOUR TAKEOVER — $9</span>
+                <span>CONQUER THIS THRONE — $9</span>
                 <span aria-hidden="true">→</span>
               </button>
               <p className="dethrone-subcopy">Take the live throne. Keep your campaign forever.</p>
