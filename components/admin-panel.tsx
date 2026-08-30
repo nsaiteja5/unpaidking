@@ -184,10 +184,14 @@ export function AdminPanel({ loggedIn }: Props) {
           <button
             type="button"
             className="admin-btn admin-btn-gold"
-            onClick={() => sendAction({ action: "repair" }, "Starter thrones seeded/repaired.")}
+            onClick={() => {
+              if (window.confirm("Are you sure? This will reseed all starter thrones from thrones.json and reset all traffic metrics & events to 0.")) {
+                sendAction({ action: "repair" }, "Database re-seeded from thrones.json and all metrics reset to 0.");
+              }
+            }}
             disabled={loading}
           >
-            Re-seed Starters
+            Re-seed & Reset All
           </button>
           <button
             type="button"

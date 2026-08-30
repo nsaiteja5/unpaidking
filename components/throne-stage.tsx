@@ -157,7 +157,15 @@ export function ThroneStage({
           </a>
         </h1>
         <p className="stage-occupied">is occupied by</p>
-        <span className="stage-king display">{throne.kingName}</span>
+        <a
+          href={outboundHref}
+          target="_blank"
+          rel="noopener nofollow"
+          className="stage-king display stage-king-link"
+          title={`Visit ${throne.kingName} (${throne.kingUrl})`}
+        >
+          {throne.kingName}
+        </a>
 
         {/* Verdict & Stake */}
         <div className="stage-verdict">

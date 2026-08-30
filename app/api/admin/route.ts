@@ -226,7 +226,7 @@ export async function POST(request: Request) {
     }
 
     // 8. Maintenance
-    if (body.action === "repair") {
+    if (body.action === "repair" || body.action === "reseed") {
       await repairSeed();
       return NextResponse.json({ ok: true });
     }

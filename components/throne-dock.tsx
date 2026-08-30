@@ -1,5 +1,6 @@
 "use client";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
+import { dollars } from "@/lib/format";
 import type { ThroneView } from "@/lib/thrones";
 
 type Props = {
@@ -16,131 +17,33 @@ export function ThroneDock({
   onStartNewThrone,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  // Drag state
-  const isDragging = useRef(false);
-  const dragStartX = useRef(0);
-  const dragScrollLeft = useRef(0);
-  const dragMoved = useRef(false);
-  const DRAG_THRESHOLD = 5; // px
+  // Alphabetical sort (A-Z) by category name
+  const sortedThrones = useMemo(() => {
+    return [...thrones].sort((a, b) => a.category.localeCompare(b.category));
+  }, [thrones]);
 
-  const filteredThrones = thrones.filter((t) => {
-    if (!searchQuery.trim()) return true;
+  // Real-time search filter
+  const filteredThrones = useMemo(() => {
+    if (!searchQuery.trim()) return sortedThrones;
     const q = searchQuery.toLowerCase().trim();
-    const catMatch = t.category.toLowerCase().includes(q);
-    const defMatch = t.definition?.toLowerCase().includes(q);
-    const aliasMatch = t.aliases ? t.aliases.toLowerCase().includes(q) : false;
-    const kingMatch = t.kingName.toLowerCase().includes(q);
-    return catMatch || defMatch || aliasMatch || kingMatch;
-  });
+    return sortedThrones.filter((t) => {
+      const catMatch = t.category.toLowerCase().includes(q);
+      const defMatch = t.definition?.toLowerCase().includes(q);
+      const aliasMatch = t.aliases ? t.aliases.toLowerCase().includes(q) : false;
+      const kingMatch = t.kingName.toLowerCase().includes(q);
+      return catMatch || defMatch || aliasMatch || kingMatch;
+    });
+  }, [sortedThrones, searchQuery]);
 
-  // ── Update scroll-edge state ──────────────────────────────────────────────
-  const updateScrollState = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-  }, []);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    updateScrollState();
-    el.addEventListener("scroll", updateScrollState, { passive: true });
-    const ro = new ResizeObserver(updateScrollState);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener("scroll", updateScrollState);
-      ro.disconnect();
-    };
-  }, [updateScrollState]);
-
-  // Re-check after filtered list changes
-  useEffect(() => {
-    setTimeout(updateScrollState, 50);
-  }, [filteredThrones.length, updateScrollState]);
-
-  // ── Auto-scroll active chip into view ────────────────────────────────────
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const activeBtn = el.querySelector<HTMLButtonElement>('[data-active="true"]');
-    if (activeBtn) {
-      const btnLeft = activeBtn.offsetLeft;
-      const btnRight = btnLeft + activeBtn.offsetWidth;
-      const viewLeft = el.scrollLeft;
-      const viewRight = viewLeft + el.clientWidth;
-      if (btnLeft < viewLeft + 16) {
-        el.scrollTo({ left: btnLeft - 16, behavior: "smooth" });
-      } else if (btnRight > viewRight - 16) {
-        el.scrollTo({ left: btnRight - el.clientWidth + 16, behavior: "smooth" });
+  const handleCardClick = (slug: string) => {
+    onSelectThrone(slug);
+    if (typeof window !== "undefined") {
+      const stageEl = document.querySelector(".throne-room-stage");
+      if (stageEl) {
+        stageEl.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }
-  }, [activeSlug]);
-
-  // ── Arrow navigation ─────────────────────────────────────────────────────
-  const scrollBy = (dir: "left" | "right") => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const amount = el.clientWidth * 0.7;
-    el.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
-  };
-
-  // ── Mouse wheel → horizontal scroll ──────────────────────────────────────
-  const handleWheel = useCallback((e: WheelEvent) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    // Only intercept vertical scrolling over the dock
-    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return; // already horizontal
-    e.preventDefault();
-    el.scrollBy({ left: e.deltaY * 2, behavior: "auto" });
-  }, []);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
-  }, [handleWheel]);
-
-  // ── Mouse drag-to-scroll ─────────────────────────────────────────────────
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    isDragging.current = true;
-    dragMoved.current = false;
-    dragStartX.current = e.pageX - el.offsetLeft;
-    dragScrollLeft.current = el.scrollLeft;
-    el.style.cursor = "grabbing";
-    el.style.userSelect = "none";
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging.current) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    const x = e.pageX - el.offsetLeft;
-    const walk = x - dragStartX.current;
-    if (Math.abs(walk) > DRAG_THRESHOLD) dragMoved.current = true;
-    el.scrollLeft = dragScrollLeft.current - walk;
-  };
-
-  const endDrag = () => {
-    const el = scrollRef.current;
-    isDragging.current = false;
-    if (el) {
-      el.style.cursor = "";
-      el.style.userSelect = "";
-    }
-  };
-
-  // Wrap chip click to suppress if dragged
-  const handleChipClick = (slug: string) => {
-    if (dragMoved.current) return;
-    onSelectThrone(slug);
   };
 
   return (
@@ -148,17 +51,34 @@ export function ThroneDock({
       {/* Search & Action Bar */}
       <div className="dock-header-bar">
         <div className="search-wrap">
-          <label htmlFor="throne-search" className="smallcaps search-label">
-            Find a throne
-          </label>
-          <input
-            id="throne-search"
-            type="search"
-            placeholder="Search category, product, or keyword..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="dock-search-input"
-          />
+          <div className="search-input-box">
+            <label htmlFor="throne-search" className="smallcaps search-label">
+              Find a throne
+            </label>
+            <div className="search-input-inner">
+              <input
+                id="throne-search"
+                type="search"
+                placeholder="Search 30 categories, kings, or keywords..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="dock-search-input"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="search-clear-btn"
+                  aria-label="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+          <span className="search-count-pill">
+            {filteredThrones.length} {filteredThrones.length === 1 ? "throne" : "thrones"}
+          </span>
         </div>
 
         <div className="new-fight-cta">
@@ -178,74 +98,68 @@ export function ThroneDock({
         </div>
       </div>
 
-      {/* Horizontal Scroll with Arrow Buttons */}
-      <div className="dock-scroll-wrapper">
-        {/* Left Arrow */}
-        <button
-          type="button"
-          className={`dock-nav-btn dock-nav-prev ${canScrollLeft ? "is-visible" : ""}`}
-          onClick={() => scrollBy("left")}
-          aria-label="Scroll thrones left"
-          tabIndex={canScrollLeft ? 0 : -1}
-        >
-          ‹
-        </button>
+      {/* Alphabetical Grid of Thrones */}
+      <div className="throne-grid" role="tablist" aria-label="All Thrones">
+        {filteredThrones.map((throne) => {
+          const isActive = activeSlug === throne.slug;
+          const isDefault =
+            throne.isDefault ||
+            (throne.stakeCents === 0 && throne.kingName === throne.defaultKingName);
+          const stakeDisplay = isDefault
+            ? "UNPAID · $0"
+            : `PAID · ${dollars(throne.stakeCents)}`;
 
-        {/* Left fade edge */}
-        <div className={`dock-edge-fade dock-edge-left ${canScrollLeft ? "is-visible" : ""}`} />
+          return (
+            <button
+              key={throne.id || throne.slug}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              data-active={isActive ? "true" : "false"}
+              className={`throne-grid-card ${isActive ? "is-active" : ""} ${
+                isDefault ? "is-default" : "is-paid"
+              }`}
+              onClick={() => handleCardClick(throne.slug)}
+            >
+              <div className="grid-card-top">
+                <span className="grid-card-category">{throne.category}</span>
+                {isActive && (
+                  <span className="grid-card-active-dot" title="Currently on stage" />
+                )}
+              </div>
 
-        <div
-          className="dock-scroll-container"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={endDrag}
-          onMouseLeave={endDrag}
-        >
-          <div
-            ref={scrollRef}
-            className="dock-scroll"
-            role="tablist"
-            aria-label="Throne categories"
-          >
-            {filteredThrones.map((throne) => (
-              <button
-                key={throne.id}
-                className={`dock-item ${activeSlug === throne.slug ? "is-active" : ""}`}
-                data-active={activeSlug === throne.slug ? "true" : "false"}
-                type="button"
-                role="tab"
-                aria-selected={activeSlug === throne.slug}
-                onClick={() => handleChipClick(throne.slug)}
-              >
-                <span className="dock-item-name">{throne.category}</span>
-                <span className="dock-item-king">({throne.kingName})</span>
-              </button>
-            ))}
-            {filteredThrones.length === 0 && (
-              <p className="no-thrones-found">
-                No throne by that name.{" "}
-                <a href="/start" className="ink-link">
-                  Start a new throne →
-                </a>
-              </p>
-            )}
-          </div>
-        </div>
+              <div className="grid-card-body">
+                <p className="grid-card-king">
+                  <span className="grid-card-king-label">King:</span>{" "}
+                  <strong className="grid-card-king-name">{throne.kingName}</strong>
+                </p>
+              </div>
 
-        {/* Right fade edge */}
-        <div className={`dock-edge-fade dock-edge-right ${canScrollRight ? "is-visible" : ""}`} />
-
-        {/* Right Arrow */}
-        <button
-          type="button"
-          className={`dock-nav-btn dock-nav-next ${canScrollRight ? "is-visible" : ""}`}
-          onClick={() => scrollBy("right")}
-          aria-label="Scroll thrones right"
-          tabIndex={canScrollRight ? 0 : -1}
-        >
-          ›
-        </button>
+              <div className="grid-card-bottom">
+                <span
+                  className={`grid-card-stake ${
+                    isDefault ? "stake-unpaid" : "stake-paid"
+                  }`}
+                >
+                  {stakeDisplay}
+                </span>
+                <span className="grid-card-view-btn" aria-hidden="true">
+                  {isActive ? "VIEWING" : "VIEW →"}
+                </span>
+              </div>
+            </button>
+          );
+        })}
       </div>
+
+      {filteredThrones.length === 0 && (
+        <div className="no-thrones-found">
+          <p>No throne found matching &ldquo;{searchQuery}&rdquo;</p>
+          <a href="/start" className="ink-link">
+            Start a new throne for this category →
+          </a>
+        </div>
+      )}
     </nav>
   );
 }

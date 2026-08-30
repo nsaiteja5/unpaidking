@@ -1,0 +1,272 @@
+[
+    {
+        "throne_name": "Pay-to-Rank Boards",
+        "what_belongs_here": "Public boards where a higher bid buys a higher rank. No ads, no algorithm, just money on a leaderboard.",
+        "default_rival_name": "outbid.lol",
+        "default_rival_url": "https://outbid.lol",
+        "default_rival_x_handle": "@jonathan_wilke",
+        "competitor_1_url": "https://rankr.lol",
+        "competitor_2_url": "https://btcbid.lol"
+    },
+    {
+        "throne_name": "Indie Payments",
+        "what_belongs_here": "Merchant-of-record billing for indie SaaS: global cards, tax, and subscriptions. Not Stripe itself.",
+        "default_rival_name": "Polar",
+        "default_rival_url": "https://polar.sh",
+        "default_rival_x_handle": "@polar_sh",
+        "competitor_1_url": "https://www.creem.io",
+        "competitor_2_url": "https://dodopayments.com"
+    },
+    {
+        "throne_name": "Launch Directories",
+        "what_belongs_here": "Indie Product Hunt alternatives where makers submit a product, earn a badge, and sit in a launch feed.",
+        "default_rival_name": "TinyLaunch",
+        "default_rival_url": "https://www.tinylaunch.com",
+        "default_rival_x_handle": "",
+        "competitor_1_url": "https://smollaunch.com",
+        "competitor_2_url": "https://openlaunch.ai"
+    },
+    {
+        "throne_name": "SaaS Boilerplates",
+        "what_belongs_here": "Paid Next.js starters with auth, billing, and SEO so a founder can ship a SaaS in days.",
+        "default_rival_name": "ShipFast",
+        "default_rival_url": "https://shipfa.st",
+        "default_rival_x_handle": "@marclou",
+        "competitor_1_url": "https://supastarter.dev",
+        "competitor_2_url": "https://makerkit.dev"
+    },
+    {
+        "throne_name": "Founder Bio Pages",
+        "what_belongs_here": "Single pages where indie founders list startups, links, and public revenue after Bento died.",
+        "default_rival_name": "Indie Page",
+        "default_rival_url": "https://indiepa.ge",
+        "default_rival_x_handle": "@marclou",
+        "competitor_1_url": "https://own.page",
+        "competitor_2_url": "https://curious.page"
+    },
+    {
+        "throne_name": "Testimonial Widgets",
+        "what_belongs_here": "Collect text and video quotes, then embed a Wall of Love on a marketing site.",
+        "default_rival_name": "Senja",
+        "default_rival_url": "https://senja.io",
+        "default_rival_x_handle": "@helloitsolly",
+        "competitor_1_url": "https://testimonial.to",
+        "competitor_2_url": "https://famewall.io"
+    },
+    {
+        "throne_name": "Changelog Widgets",
+        "what_belongs_here": "In-app What's New widgets and public changelog pages for SaaS product updates.",
+        "default_rival_name": "Headway",
+        "default_rival_url": "https://headwayapp.co",
+        "default_rival_x_handle": "",
+        "competitor_1_url": "https://announcify.app",
+        "competitor_2_url": "https://changenote.dev"
+    },
+    {
+        "throne_name": "App Store Screenshots",
+        "what_belongs_here": "Generate localized App Store and Play Store screenshot sets from device captures.",
+        "default_rival_name": "Screenshots Pro",
+        "default_rival_url": "https://screenshots.pro",
+        "default_rival_x_handle": "",
+        "competitor_1_url": "https://storeshots.org",
+        "competitor_2_url": "https://appscreen.co"
+    },
+    {
+        "throne_name": "Feedback Boards",
+        "what_belongs_here": "Public feature-request boards with voting, roadmaps, and close-the-loop release notes.",
+        "default_rival_name": "Featurebase",
+        "default_rival_url": "https://www.featurebase.app",
+        "default_rival_x_handle": "@featurebasehq",
+        "competitor_1_url": "https://nolt.io",
+        "competitor_2_url": "https://featureos.com"
+    },
+    {
+        "throne_name": "Waitlist Tools",
+        "what_belongs_here": "Pre-launch waitlists with referral loops, ranking, and email capture for indie launches.",
+        "default_rival_name": "Viral Loops",
+        "default_rival_url": "https://viral-loops.com",
+        "default_rival_x_handle": "",
+        "competitor_1_url": "https://getwaitlist.com",
+        "competitor_2_url": "https://waitlister.me"
+    },
+    {
+        "throne_name": "Transactional Email",
+        "what_belongs_here": "APIs that send password resets, receipts, and product emails with inbox deliverability.",
+        "default_rival_name": "Resend",
+        "default_rival_url": "https://resend.com",
+        "default_rival_x_handle": "@resend",
+        "competitor_1_url": "https://postmarkapp.com",
+        "competitor_2_url": "https://loops.so"
+    },
+    {
+        "throne_name": "Booking Pages",
+        "what_belongs_here": "Public calendar links for 1:1 calls, round-robin team booking, and paid appointments.",
+        "default_rival_name": "Calendly",
+        "default_rival_url": "https://calendly.com",
+        "default_rival_x_handle": "@calendly",
+        "competitor_1_url": "https://cal.com",
+        "competitor_2_url": "https://savvycal.com"
+    },
+    {
+        "throne_name": "Product Analytics",
+        "what_belongs_here": "Event tracking, funnels, and retention charts for web and product usage, not just pageviews.",
+        "default_rival_name": "Mixpanel",
+        "default_rival_url": "https://mixpanel.com",
+        "default_rival_x_handle": "@mixpanel",
+        "competitor_1_url": "https://posthog.com",
+        "competitor_2_url": "https://plausible.io"
+    },
+    {
+        "throne_name": "Auth Platforms",
+        "what_belongs_here": "Drop-in user login: email, OAuth, sessions, and organizations for SaaS apps.",
+        "default_rival_name": "Clerk",
+        "default_rival_url": "https://clerk.com",
+        "default_rival_x_handle": "@clerkdev",
+        "competitor_1_url": "https://www.better-auth.com",
+        "competitor_2_url": "https://supertokens.com"
+    },
+    {
+        "throne_name": "Cold Email",
+        "what_belongs_here": "Outbound email sequences with mailbox warmup, rotation, and reply tracking for sales.",
+        "default_rival_name": "Instantly",
+        "default_rival_url": "https://instantly.ai",
+        "default_rival_x_handle": "@instantlyai",
+        "competitor_1_url": "https://smartlead.ai",
+        "competitor_2_url": "https://www.lemlist.com"
+    },
+    {
+        "throne_name": "Form Builders",
+        "what_belongs_here": "No-code forms for leads, surveys, and payments without building a custom frontend.",
+        "default_rival_name": "Typeform",
+        "default_rival_url": "https://www.typeform.com",
+        "default_rival_x_handle": "@typeform",
+        "competitor_1_url": "https://tally.so",
+        "competitor_2_url": "https://www.fillout.com"
+    },
+    {
+        "throne_name": "Product Docs",
+        "what_belongs_here": "Hosted developer and product documentation with search, OpenAPI, and a public docs site.",
+        "default_rival_name": "Mintlify",
+        "default_rival_url": "https://mintlify.com",
+        "default_rival_x_handle": "@mintlify",
+        "competitor_1_url": "https://www.gitbook.com",
+        "competitor_2_url": "https://readme.com"
+    },
+    {
+        "throne_name": "Error Tracking",
+        "what_belongs_here": "Capture exceptions, group stack traces, and alert when production code breaks.",
+        "default_rival_name": "Sentry",
+        "default_rival_url": "https://sentry.io",
+        "default_rival_x_handle": "@getsentry",
+        "competitor_1_url": "https://www.bugsnag.com",
+        "competitor_2_url": "https://betterstack.com"
+    },
+    {
+        "throne_name": "Background Jobs",
+        "what_belongs_here": "Durable queues and workflows that run emails, webhooks, and long tasks off the request path.",
+        "default_rival_name": "Inngest",
+        "default_rival_url": "https://www.inngest.com",
+        "default_rival_x_handle": "@inngest",
+        "competitor_1_url": "https://trigger.dev",
+        "competitor_2_url": "https://upstash.com/qstash"
+    },
+    {
+        "throne_name": "Link Shorteners",
+        "what_belongs_here": "Branded short links with click analytics, QR codes, and custom domains for campaigns.",
+        "default_rival_name": "Bitly",
+        "default_rival_url": "https://bitly.com",
+        "default_rival_x_handle": "@Bitly",
+        "competitor_1_url": "https://dub.co",
+        "competitor_2_url": "https://www.rebrandly.com"
+    },
+    {
+        "throne_name": "Screen Recorders",
+        "what_belongs_here": "Record screen plus camera, then share a link or export a polished product demo video.",
+        "default_rival_name": "Loom",
+        "default_rival_url": "https://www.loom.com",
+        "default_rival_x_handle": "@loom",
+        "competitor_1_url": "https://screen.studio",
+        "competitor_2_url": "https://www.tella.tv"
+    },
+    {
+        "throne_name": "Support Inboxes",
+        "what_belongs_here": "Shared inboxes and live chat for customer tickets, not a full marketing automation suite.",
+        "default_rival_name": "Intercom",
+        "default_rival_url": "https://www.intercom.com",
+        "default_rival_x_handle": "@intercom",
+        "competitor_1_url": "https://crisp.chat",
+        "competitor_2_url": "https://www.plain.com"
+    },
+    {
+        "throne_name": "Status Pages",
+        "what_belongs_here": "Public uptime pages that show incidents, component health, and subscriber alerts.",
+        "default_rival_name": "Statuspage",
+        "default_rival_url": "https://www.atlassian.com/software/statuspage",
+        "default_rival_x_handle": "",
+        "competitor_1_url": "https://instatus.com",
+        "competitor_2_url": "https://betterstack.com"
+    },
+    {
+        "throne_name": "File Uploads",
+        "what_belongs_here": "APIs that accept user files, store them, and serve images or video through a CDN.",
+        "default_rival_name": "Cloudinary",
+        "default_rival_url": "https://cloudinary.com",
+        "default_rival_x_handle": "@cloudinary",
+        "competitor_1_url": "https://uploadthing.com",
+        "competitor_2_url": "https://imagekit.io"
+    },
+    {
+        "throne_name": "Modern CRMs",
+        "what_belongs_here": "Flexible CRM for pipelines, contacts, and deals without a bloated marketing cloud.",
+        "default_rival_name": "HubSpot",
+        "default_rival_url": "https://www.hubspot.com",
+        "default_rival_x_handle": "@HubSpot",
+        "competitor_1_url": "https://attio.com",
+        "competitor_2_url": "https://www.folk.app"
+    },
+    {
+        "throne_name": "Tweet Schedulers",
+        "what_belongs_here": "Write, queue, and auto-post threads on X, with analytics and cross-posting to other networks.",
+        "default_rival_name": "Buffer",
+        "default_rival_url": "https://buffer.com",
+        "default_rival_x_handle": "@buffer",
+        "competitor_1_url": "https://typefully.com",
+        "competitor_2_url": "https://hypefury.com"
+    },
+    {
+        "throne_name": "AI Code Editors",
+        "what_belongs_here": "Code editors with native generative AI autocompletion and agent capabilities.",
+        "default_rival_name": "Cursor",
+        "default_rival_url": "https://cursor.com",
+        "default_rival_x_handle": "@cursor_ai",
+        "competitor_1_url": "https://windsurf.ai",
+        "competitor_2_url": "https://github.com/features/copilot"
+    },
+    {
+        "throne_name": "Newsletter Platforms",
+        "what_belongs_here": "Hosted newsletters with paid subs, referral loops, and a public archive for writers.",
+        "default_rival_name": "Substack",
+        "default_rival_url": "https://substack.com",
+        "default_rival_x_handle": "@SubstackInc",
+        "competitor_1_url": "https://www.beehiiv.com",
+        "competitor_2_url": "https://kit.com"
+    },
+    {
+        "throne_name": "Website Builders",
+        "what_belongs_here": "Visual site builders for marketing pages, portfolios, and no-code company sites.",
+        "default_rival_name": "Webflow",
+        "default_rival_url": "https://webflow.com",
+        "default_rival_x_handle": "@webflow",
+        "competitor_1_url": "https://www.framer.com",
+        "competitor_2_url": "https://carrd.co"
+    },
+    {
+        "throne_name": "Postgres Hosting",
+        "what_belongs_here": "Managed Postgres with branching, scale-to-zero, and a dashboard for serverless apps.",
+        "default_rival_name": "Supabase",
+        "default_rival_url": "https://supabase.com",
+        "default_rival_x_handle": "@supabase",
+        "competitor_1_url": "https://neon.tech",
+        "competitor_2_url": "https://www.timescale.com"
+    }
+]

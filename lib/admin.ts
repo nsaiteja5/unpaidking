@@ -5,6 +5,7 @@ import {
   adminLogs,
   adminSettings,
   blockedEntities,
+  checkouts,
   events,
   reigns,
   reports,
@@ -878,41 +879,64 @@ export async function actionReport(
 }
 
 export async function repairSeed() {
+  await ensureDatabaseReady(pool);
+
+  // 1. Wipe all existing traffic metrics, events, reports, checkouts, reigns, and thrones
+  await db.delete(events);
+  await db.delete(reports);
+  await db.delete(checkouts);
+  await db.delete(reigns);
+  await db.delete(thrones);
+
+  // 2. Re-seed all starter thrones from seedThrones with all metrics reset to 0
   for (const item of seedThrones) {
-    const [existing] = await db
-      .select()
-      .from(thrones)
-      .where(eq(thrones.slug, item.slug))
-      .limit(1);
+    const throneId = randomUUID();
+    const cleanKingUrl = canonicalUrl(item.kingUrl);
 
-    if (!existing) {
-      const throneId = randomUUID();
-      await db.insert(thrones).values({
-        id: throneId,
-        slug: item.slug,
-        category: item.category,
-        definition: item.definition,
-        source: "seeded",
-        status: "live",
-        aliases: item.aliases ?? null,
-        defaultKingName: item.kingName,
-        defaultKingUrl: item.kingUrl,
-        defaultKingXHandle: item.defaultKingXHandle ?? null,
-        kingName: item.kingName,
-        kingUrl: item.kingUrl,
-        stakeCents: 0,
-      });
+    await db.insert(thrones).values({
+      id: throneId,
+      slug: item.slug,
+      category: item.category,
+      definition: item.definition,
+      source: "seeded",
+      status: "live",
+      aliases: item.aliases ?? null,
+      defaultKingName: item.kingName,
+      defaultKingUrl: cleanKingUrl,
+      defaultKingXHandle: item.defaultKingXHandle ?? null,
+      kingName: item.kingName,
+      kingUrl: cleanKingUrl,
+      stakeCents: 0,
+      recordedVisits: 0,
+      outboundClicks: 0,
+      reignStartedAt: new Date(),
+      updatedAt: new Date(),
+    });
 
-      await db.insert(reigns).values({
-        id: randomUUID(),
-        publicId: generatePublicId(10),
-        throneId,
-        kingName: item.kingName,
-        kingUrl: item.kingUrl,
-        productXHandle: item.defaultKingXHandle ?? null,
-        amountCents: 0,
-        status: "current",
-      });
-    }
+    await db.insert(reigns).values({
+      id: randomUUID(),
+      publicId: generatePublicId(10),
+      throneId,
+      kingName: item.kingName,
+      kingUrl: cleanKingUrl,
+      productXHandle: item.defaultKingXHandle ?? null,
+      amountCents: 0,
+      recordedVisits: 0,
+      outboundClicks: 0,
+      status: "current",
+      startedAt: new Date(),
+      paidAt: new Date(),
+    });
   }
+
+  await logAdminAction(
+    "reseed_database",
+    "system",
+    "all",
+    null,
+    `Reseeded ${seedThrones.length} starter thrones from thrones.json and reset all metrics to 0.`,
+  );
 }
+
+export const reseedDatabaseAdmin = repairSeed;
+
