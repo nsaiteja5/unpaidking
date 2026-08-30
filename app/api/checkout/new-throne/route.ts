@@ -3,7 +3,7 @@ import { z } from "zod";
 import { canonicalUrl } from "@/lib/format";
 import { paymentProvider } from "@/lib/payments";
 import { getThrones } from "@/lib/thrones";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getBaseUrl } from "@/lib/auth";
 import {
   checkDuplicateCategory,
   checkRateLimits,
@@ -134,7 +134,7 @@ export async function POST(request: Request) {
     }
 
     const formattedCta = data.ctaLabel.replace("{Product}", data.name);
-    const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+    const base = getBaseUrl(request);
 
     const defaultRivalHandle = data.defaultRivalXHandle
       ? data.defaultRivalXHandle.replace(/^@/, "").trim()

@@ -13,68 +13,6 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** Builds a minimal HTML page that sets the session cookie then redirects.
- *  This is necessary because Vercel (and some CDN/proxy setups) can strip
- *  Set-Cookie headers from 3xx redirect responses, causing the session to be
- *  silently dropped even though auth succeeded.
- */
-function htmlRedirectWithCookie(
-  destination: string,
-  cookieName: string,
-  cookieValue: string,
-  cookieAttrs: Record<string, string | boolean | number>,
-  clearCookieName?: string,
-  clearCookieAttrs?: Record<string, string | boolean | number>,
-): NextResponse {
-  // Build cookie attribute string
-  const attrStr = Object.entries(cookieAttrs)
-    .map(([k, v]) => {
-      if (v === true) return k;
-      if (v === false) return "";
-      return `${k}=${v}`;
-    })
-    .filter(Boolean)
-    .join("; ");
-
-  const setCookieHeaders: string[] = [
-    `${cookieName}=${cookieValue}; ${attrStr}`,
-  ];
-
-  if (clearCookieName && clearCookieAttrs) {
-    const clearAttrStr = Object.entries(clearCookieAttrs)
-      .map(([k, v]) => {
-        if (v === true) return k;
-        if (v === false) return "";
-        return `${k}=${v}`;
-      })
-      .filter(Boolean)
-      .join("; ");
-    setCookieHeaders.push(`${clearCookieName}=; ${clearAttrStr}; Max-Age=0`);
-  }
-
-  const safeDestination = destination.replace(/"/g, "%22");
-
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta http-equiv="refresh" content="0;url=${safeDestination}">
-<script>window.location.replace(${JSON.stringify(destination)});</script>
-</head>
-<body>Signing you in&hellip;</body>
-</html>`;
-
-  const res = new NextResponse(html, {
-    status: 200,
-    headers: { "Content-Type": "text/html; charset=utf-8" },
-  });
-
-  for (const header of setCookieHeaders) {
-    res.headers.append("Set-Cookie", header);
-  }
-
-  return res;
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
@@ -82,7 +20,10 @@ export async function GET(request: Request) {
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
-  const isHttps = request.url.startsWith("https://") || request.headers.get("x-forwarded-proto") === "https";
+  const isHttps =
+    request.url.startsWith("https://") ||
+    request.headers.get("x-forwarded-proto") === "https" ||
+    (process.env.NODE_ENV === "production" && !request.url.includes("localhost"));
 
   // ─── Primary: verify state from URL (stateless, works even when cookie was dropped) ───
   let oauthData = stateParam ? verifySignedOAuthState(stateParam) : null;
@@ -210,41 +151,28 @@ export async function GET(request: Request) {
 
     console.log(`[auth] Successfully logged in @${sessionUser.xHandle} (ID: ${sessionUser.id})`);
 
-    // 4. Build destination URL
-    const redirectUrl = new URL(returnTo, request.url);
-    redirectUrl.searchParams.delete("auth_error");
-    const destination = redirectUrl.toString();
-
-    // 5. Return a 200 HTML page that sets the cookie then redirects.
-    //    We do NOT use NextResponse.redirect() + .cookies.set() here because
-    //    Vercel/CDNs may strip Set-Cookie from 3xx responses, silently killing the session.
+    // 4. Create signed session payload and redirect response
     const sessionPayload = createSignedSessionPayload(sessionUser);
     const cookieOpts = getCookieOptions(isHttps);
 
-    const maxAgeAttr = 60 * 60 * 24 * 30;
-    const cookieAttrs: Record<string, string | boolean | number> = {
-      Path: cookieOpts.path,
-      "Max-Age": maxAgeAttr,
-      SameSite: cookieOpts.sameSite,
-      HttpOnly: cookieOpts.httpOnly,
-      ...(cookieOpts.secure ? { Secure: true } : {}),
-    };
+    const redirectUrl = new URL(returnTo, request.url);
+    redirectUrl.searchParams.delete("auth_error");
 
-    const clearAttrs: Record<string, string | boolean | number> = {
-      Path: cookieOpts.path,
-      SameSite: cookieOpts.sameSite,
-      HttpOnly: cookieOpts.httpOnly,
-      ...(cookieOpts.secure ? { Secure: true } : {}),
-    };
+    const response = NextResponse.redirect(redirectUrl);
 
-    return htmlRedirectWithCookie(
-      destination,
-      SESSION_COOKIE_NAME,
-      sessionPayload,
-      cookieAttrs,
-      OAUTH_COOKIE_NAME,
-      clearAttrs,
-    );
+    // Set 30-day session cookie
+    response.cookies.set(SESSION_COOKIE_NAME, sessionPayload, {
+      ...cookieOpts,
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    });
+
+    // Clear the OAuth state cookie
+    response.cookies.set(OAUTH_COOKIE_NAME, "", {
+      ...cookieOpts,
+      maxAge: 0,
+    });
+
+    return response;
   } catch (err) {
     console.error("[auth] Unexpected error in Twitter OAuth callback:", err);
     return NextResponse.redirect(new URL(`${returnTo}${returnTo.includes("?") ? "&" : "?"}auth_error=server_exception`, request.url));

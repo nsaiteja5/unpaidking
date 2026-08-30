@@ -4,7 +4,7 @@ import { canonicalUrl, nextStealPrice } from "@/lib/format";
 import { paymentProvider } from "@/lib/payments";
 import { getThrone } from "@/lib/thrones";
 import { validateOfferContent } from "@/lib/guardrails";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getBaseUrl } from "@/lib/auth";
 
 const CTA_OPTIONS = ["Try {Product}", "Get the offer", "Book a demo", "Start free", "Learn more"] as const;
 
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     const formattedCta = ctaLabel.replace("{Product}", name);
     const isUnpaidDefault = throne.stakeCents === 0 && throne.kingName === throne.defaultKingName;
     const price = nextStealPrice(throne.stakeCents, isUnpaidDefault);
-    const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+    const base = getBaseUrl(request);
 
     const normalizedHandle = productXHandle.replace(/^@/, "").trim();
 

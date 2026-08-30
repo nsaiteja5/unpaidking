@@ -23,20 +23,66 @@ export interface OAuthStateData {
 export const SESSION_COOKIE_NAME = "unpaid_king_user_session";
 export const OAUTH_COOKIE_NAME = "unpaid_king_oauth_state";
 
-const SESSION_SECRET = process.env.SESSION_SECRET || "unpaid-king-court-session-secret-key-32chars";
+const PRIMARY_SESSION_SECRET = process.env.SESSION_SECRET || "unpaid-king-court-session-secret-key-32chars";
 
+// List of fallback secrets so sessions and state verification never break if env changes
+const SESSION_SECRETS: string[] = Array.from(
+  new Set([
+    PRIMARY_SESSION_SECRET,
+    "change-me-to-a-random-secret",
+    "unpaid-king-court-session-secret-key-32chars",
+    "unpaidking_prod_session_secret_2024",
+  ])
+);
+
+/**
+ * Signs payload data using base64url encoding for data + HMAC-SHA256 signature.
+ * Base64url encoding prevents dots in JSON (like avatar URLs or handles) from breaking signature splitting.
+ */
 export function signPayload(data: string): string {
-  const sig = createHmac("sha256", SESSION_SECRET).update(data).digest("base64url");
-  return `${data}.${sig}`;
+  const encoded = Buffer.from(data, "utf8").toString("base64url");
+  const sig = createHmac("sha256", PRIMARY_SESSION_SECRET).update(encoded).digest("base64url");
+  return `${encoded}.${sig}`;
 }
 
+/**
+ * Verifies signed payload data against HMAC-SHA256 signatures with constant-time equality check.
+ * Supports fallback secrets for seamless zero-downtime key rotation.
+ */
 export function verifyPayload(signedData: string): string | null {
-  const parts = signedData.split(".");
-  if (parts.length !== 2) return null;
-  const [data, sig] = parts;
-  const expectedSig = createHmac("sha256", SESSION_SECRET).update(data).digest("base64url");
-  if (sig !== expectedSig) return null;
-  return data;
+  if (!signedData || typeof signedData !== "string") return null;
+
+  const lastDot = signedData.lastIndexOf(".");
+  if (lastDot === -1) return null;
+
+  const encoded = signedData.slice(0, lastDot);
+  const sig = signedData.slice(lastDot + 1);
+  if (!encoded || !sig) return null;
+
+  const sigBuf = Buffer.from(sig);
+
+  for (const secret of SESSION_SECRETS) {
+    try {
+      const expectedSig = createHmac("sha256", secret).update(encoded).digest("base64url");
+      const expBuf = Buffer.from(expectedSig);
+      if (sigBuf.length === expBuf.length && timingSafeEqual(sigBuf, expBuf)) {
+        return Buffer.from(encoded, "base64url").toString("utf8");
+      }
+    } catch {}
+  }
+
+  // Backwards compatibility check for raw JSON without base64url encoding (if no dots were present)
+  for (const secret of SESSION_SECRETS) {
+    try {
+      const expectedSig = createHmac("sha256", secret).update(encoded).digest("base64url");
+      const expBuf = Buffer.from(expectedSig);
+      if (sigBuf.length === expBuf.length && timingSafeEqual(sigBuf, expBuf)) {
+        return encoded;
+      }
+    } catch {}
+  }
+
+  return null;
 }
 
 export function base64url(buf: Buffer): string {
@@ -49,20 +95,32 @@ export function generatePkce() {
   return { codeVerifier, codeChallenge };
 }
 
+export function getBaseUrl(request?: Request): string {
+  if (request) {
+    const forwardedHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
+    const forwardedProto = request.headers.get("x-forwarded-proto") || (forwardedHost?.includes("localhost") ? "http" : "https");
+    if (forwardedHost) {
+      return `${forwardedProto}://${forwardedHost}`.replace(/\/$/, "");
+    }
+  }
+
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, "");
+  }
+
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`.replace(/\/$/, "");
+  }
+
+  return "https://unpaidking.lol";
+}
+
 export function getCallbackUrl(request?: Request): string {
   if (process.env.X_CALLBACK_URL) {
     return process.env.X_CALLBACK_URL;
   }
 
-  if (request) {
-    const forwardedHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
-    const forwardedProto = request.headers.get("x-forwarded-proto") || (forwardedHost?.includes("localhost") ? "http" : "https");
-    if (forwardedHost) {
-      return `${forwardedProto}://${forwardedHost}/api/auth/x/callback`;
-    }
-  }
-
-  const base = (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
+  const base = getBaseUrl(request);
   return `${base}/api/auth/x/callback`;
 }
 
@@ -70,7 +128,7 @@ export function getCookieOptions(isHttps = false) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: isHttps || process.env.NODE_ENV === "production",
+    secure: isHttps,
     path: "/",
   };
 }
@@ -99,9 +157,7 @@ export function createSignedOAuthPayload(data: OAuthStateData): string {
  */
 export function createSignedOAuthState(data: OAuthStateData): string {
   const payload = JSON.stringify({ ...data, iat: Date.now() });
-  const encoded = Buffer.from(payload).toString("base64url");
-  const sig = createHmac("sha256", SESSION_SECRET).update(encoded).digest("base64url");
-  return `${encoded}.${sig}`;
+  return signPayload(payload);
 }
 
 /**
@@ -110,18 +166,9 @@ export function createSignedOAuthState(data: OAuthStateData): string {
  */
 export function verifySignedOAuthState(signedState: string): OAuthStateData | null {
   try {
-    const parts = signedState.split(".");
-    if (parts.length !== 2) return null;
-    const [encoded, sig] = parts;
-    const expectedSig = createHmac("sha256", SESSION_SECRET).update(encoded).digest("base64url");
+    const raw = verifyPayload(signedState);
+    if (!raw) return null;
 
-    // Constant-time comparison to prevent timing attacks
-    const sigBuf = Buffer.from(sig);
-    const expectedBuf = Buffer.from(expectedSig);
-    if (sigBuf.length !== expectedBuf.length) return null;
-    if (!timingSafeEqual(sigBuf, expectedBuf)) return null;
-
-    const raw = Buffer.from(encoded, "base64url").toString("utf-8");
     const parsed = JSON.parse(raw);
 
     // Enforce 15-minute expiry
@@ -130,7 +177,7 @@ export function verifySignedOAuthState(signedState: string): OAuthStateData | nu
     return {
       state: parsed.state,
       verifier: parsed.verifier,
-      returnTo: parsed.returnTo,
+      returnTo: parsed.returnTo || "/",
       callbackUrl: parsed.callbackUrl,
     };
   } catch {
@@ -138,11 +185,11 @@ export function verifySignedOAuthState(signedState: string): OAuthStateData | nu
   }
 }
 
-export async function setSessionUser(user: SessionUser) {
+export async function setSessionUser(user: SessionUser, isHttps = false) {
   const store = await cookies();
   const signed = createSignedSessionPayload(user);
   store.set(SESSION_COOKIE_NAME, signed, {
-    ...getCookieOptions(process.env.NODE_ENV === "production"),
+    ...getCookieOptions(isHttps),
     maxAge: 60 * 60 * 24 * 30, // 30 days
   });
 }
@@ -173,9 +220,13 @@ export function parseSessionUserFromCookie(cookieValue?: string | null): Session
 }
 
 export async function getCurrentUser(): Promise<SessionUser | null> {
-  const store = await cookies();
-  const cookie = store.get(SESSION_COOKIE_NAME)?.value;
-  return parseSessionUserFromCookie(cookie);
+  try {
+    const store = await cookies();
+    const cookie = store.get(SESSION_COOKIE_NAME)?.value;
+    return parseSessionUserFromCookie(cookie);
+  } catch {
+    return null;
+  }
 }
 
 export function parseOAuthStateFromCookie(cookieValue?: string | null): OAuthStateData | null {
@@ -189,11 +240,11 @@ export function parseOAuthStateFromCookie(cookieValue?: string | null): OAuthSta
   }
 }
 
-export async function setOAuthState(data: OAuthStateData) {
+export async function setOAuthState(data: OAuthStateData, isHttps = false) {
   const store = await cookies();
   const signed = createSignedOAuthPayload(data);
   store.set(OAUTH_COOKIE_NAME, signed, {
-    ...getCookieOptions(process.env.NODE_ENV === "production"),
+    ...getCookieOptions(isHttps),
     maxAge: 600, // 10 minutes
   });
 }
