@@ -140,7 +140,6 @@ export async function POST(request: Request) {
       amountCents: amountToCharge,
       expectedPreviousKing: throne.kingName,
       expectedPreviousStakeCents: throne.stakeCents,
-      customerName: user.xName,
       successUrl: `${base}/checkout/return?ok=1`,
       cancelUrl: `${base}/t/${throne.slug}#steal`,
     });

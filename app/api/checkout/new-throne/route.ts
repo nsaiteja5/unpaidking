@@ -161,7 +161,6 @@ export async function POST(request: Request) {
       expectedPreviousKing: data.defaultRivalName,
       expectedPreviousStakeCents: 0,
       amountCents: 900,
-      customerName: user.xName,
       successUrl: `${base}/checkout/return?ok=1`,
       cancelUrl: `${base}/start`,
     });
