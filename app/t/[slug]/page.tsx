@@ -45,7 +45,17 @@ export default async function ThronePage({ params }: Props) {
 
   return (
     <>
-      <LiveRefresh slug={throne.slug} updatedAt={throne.updatedAt.getTime()} />
+      <LiveRefresh
+        slug={throne.slug}
+        version={[
+          throne.updatedAt.getTime(),
+          throne.visits7d,
+          throne.clicks7d,
+          throne.currentReign?.id ?? "none",
+          throne.currentReign?.recordedVisits ?? 0,
+          throne.currentReign?.outboundClicks ?? 0,
+        ].join(":")}
+      />
       <ViewTracker type="throne_view" slug={throne.slug} />
 
       <ThroneStage throne={throne} currentUser={user} />

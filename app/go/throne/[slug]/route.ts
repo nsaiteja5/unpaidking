@@ -27,15 +27,14 @@ export async function GET(
   }
 
   const userAgent = request.headers.get("user-agent") ?? "";
-
-  await recordEvent({
+  const tracking = await recordEvent({
     type: "throne_click",
     throneId: throne.id,
     visitorId,
     userAgent,
   });
 
-  const destination = buildDestinationUrl(throne.kingUrl, {
+  const destination = buildDestinationUrl(tracking.kingUrl ?? throne.kingUrl, {
     utm_source: "unpaidking",
     utm_medium: "throne",
     utm_campaign: throne.slug,

@@ -11,7 +11,14 @@ export async function POST(request: Request) {
   try {
     const userAgent = request.headers.get("user-agent") ?? "";
     const cookieStore = await cookies();
-    let visitorId = cookieStore.get(VISITOR_COOKIE)?.value;
+    const suppliedVisitorId = request.headers.get("x-uk-visitor-id")?.trim();
+    const cookieVisitorId = cookieStore.get(VISITOR_COOKIE)?.value;
+    const validVisitorId = (value?: string) => Boolean(value && /^[A-Za-z0-9_-]{8,128}$/.test(value));
+    let visitorId = validVisitorId(suppliedVisitorId)
+      ? suppliedVisitorId
+      : validVisitorId(cookieVisitorId)
+        ? cookieVisitorId
+        : undefined;
     let isNewVisitor = false;
 
     if (!visitorId) {
@@ -21,6 +28,10 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const { type, slug, publicId } = body;
+
+    if (type !== "throne_view" && type !== "reign_view") {
+      return NextResponse.json({ ok: false, error: "Unsupported event." }, { status: 400 });
+    }
 
     let throneId: string | undefined = undefined;
     let reignId: string | undefined = undefined;

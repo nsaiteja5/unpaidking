@@ -134,7 +134,7 @@ export default async function ReignPage({ params }: Props) {
         <div className="offer-cta-zone">
           <a
             href={`/go/reign/${publicId}`}
-            className="reign-primary-cta"
+            className="visitor-cta-btn reign-primary-cta"
             target="_blank"
             rel="noopener nofollow"
           >

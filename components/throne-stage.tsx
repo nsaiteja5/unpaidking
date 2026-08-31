@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Stamp } from "@/components/stamp";
 import { dollars, nextStealPrice } from "@/lib/format";
 import { ReportButton } from "@/components/report-button";
@@ -37,13 +37,9 @@ export function ThroneStage({
   const [editOfferOpen, setEditOfferOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // Synchronize with throne prop changes
-  if (throne.currentReign !== currentReign && (!currentReign || throne.currentReign?.id !== currentReign.id)) {
-    setCurrentReign(throne.currentReign);
-  }
-  if (throne.stakeCents !== stakeCents) {
-    setStakeCents(throne.stakeCents);
-  }
+  // Keep live traffic counters in sync even when the same reign remains seated.
+  useEffect(() => setCurrentReign(throne.currentReign), [throne.currentReign]);
+  useEffect(() => setStakeCents(throne.stakeCents), [throne.stakeCents]);
 
   // Detect if current session user is the sitting owner
   const isOwner = Boolean(

@@ -104,6 +104,16 @@ class StubProvider implements PaymentProvider {
 
 let _cachedDefaultProductId: string | null = null;
 
+function getCheckoutCustomer(input: CreateCheckoutInput) {
+  // Dodo requires an email/name for its hosted checkout. Keep these stable and
+  // prefilled so buyers are not asked to build a second customer profile.
+  const userKey = (input.userId || "guest").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  return {
+    email: input.customerEmail || `buyer-${userKey}@unpaidking.lol`,
+    name: input.customerName || input.name || "Unpaid King Customer",
+  };
+}
+
 async function getOrCreateDodoProductId(client: DodoPayments): Promise<string> {
   if (process.env.DODO_PAYMENTS_PRODUCT_ID) {
     return process.env.DODO_PAYMENTS_PRODUCT_ID;
@@ -200,6 +210,8 @@ class DodoPaymentProvider implements PaymentProvider {
       returnUrlStr = u.toString();
     }
 
+    const customer = getCheckoutCustomer(input);
+
     const session = await client.checkoutSessions.create({
       product_cart: [
         {
@@ -216,12 +228,30 @@ class DodoPaymentProvider implements PaymentProvider {
         userId: input.userId || "",
         productName: input.name,
       },
-      customer: input.customerEmail
-        ? {
-            email: input.customerEmail,
-            name: input.customerName || input.name,
-          }
-        : undefined,
+      customer,
+      // This is a one-time digital purchase. Prefill the provider's required
+      // billing fields and turn off the optional profile fields/edit controls so
+      // checkout does not become a second name/address/phone form.
+      billing_address: {
+        street: "1 Market Street",
+        city: "Bengaluru",
+        state: "Karnataka",
+        country: "IN",
+        zipcode: "560001",
+      },
+      feature_flags: {
+        allow_currency_selection: false,
+        allow_discount_code: false,
+        allow_phone_number_collection: false,
+        allow_tax_id: false,
+        allow_customer_editing_email: false,
+        allow_customer_editing_name: false,
+        allow_customer_editing_street: false,
+        allow_customer_editing_city: false,
+        allow_customer_editing_state: false,
+        allow_customer_editing_country: false,
+        allow_customer_editing_zipcode: false,
+      },
     });
 
     if (!session.checkout_url) {

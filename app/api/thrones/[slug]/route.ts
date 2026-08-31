@@ -19,5 +19,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
     clicks7d: throne.clicks7d,
     updatedAt: throne.updatedAt.getTime(),
     currentReign: throne.currentReign,
+    version: [
+      throne.updatedAt.getTime(),
+      throne.visits7d,
+      throne.clicks7d,
+      throne.currentReign?.id ?? "none",
+      throne.currentReign?.recordedVisits ?? 0,
+      throne.currentReign?.outboundClicks ?? 0,
+    ].join(":"),
   });
 }

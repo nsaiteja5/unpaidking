@@ -90,8 +90,35 @@ button, input, textarea, select { font: inherit; }
 .visitor-offer-zone { padding: 22px; background: rgba(28, 24, 20, 0.85); border: 1px solid var(--rule); margin-top: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
 .live-offer-headline { font-size: clamp(1.4rem, 3.5vw, 2rem); margin: 0 0 10px; color: var(--paper-bright); line-height: 1.15; letter-spacing: -0.03em; }
 .live-offer-pitch { font-size: 0.95rem; color: var(--paper-dim); line-height: 1.45; max-width: 580px; margin: 0 auto 18px; }
-.visitor-outbound-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; background: var(--paper); color: var(--ink); font-weight: 700; font-size: 0.82rem; letter-spacing: 0.08em; text-decoration: none; text-transform: uppercase; transition: all 120ms ease; border: 1px solid transparent; }
-.visitor-outbound-cta:hover { background: var(--paper-bright); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(232, 220, 200, 0.2); }
+.visitor-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 14px 28px;
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  border: 1px solid rgba(20, 17, 14, 0.18);
+  border-radius: 3px;
+  box-shadow: 6px 7px 0 rgba(0, 0, 0, 0.24);
+  transform: rotate(-1.2deg);
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+.visitor-cta-btn:hover {
+  background: var(--paper-bright);
+  transform: translateY(-2px) rotate(-1.2deg);
+  box-shadow: 8px 10px 0 rgba(0, 0, 0, 0.26);
+}
+.visitor-cta-btn:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: 4px;
+}
 
 .founder-takeover-zone { margin-top: 32px; padding-top: 20px; }
 .takeover-divider { width: 120px; height: 1px; background: var(--rule); margin: 0 auto 16px; }
@@ -482,8 +509,8 @@ button, input, textarea, select { font: inherit; }
 .offer-headline { font-size: clamp(1.6rem, 4vw, 2.4rem); margin: 0 0 14px; color: var(--paper-bright); line-height: 1.15; letter-spacing: -0.04em; }
 .offer-pitch { font-size: 1.05rem; color: var(--paper); line-height: 1.5; margin: 0 0 24px; }
 .offer-cta-zone { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.reign-primary-cta { display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 28px; background: var(--paper); color: var(--ink); font-weight: 700; font-size: 0.85rem; letter-spacing: 0.08em; text-decoration: none; text-transform: uppercase; transition: all 120ms ease; }
-.reign-primary-cta:hover { background: var(--paper-bright); transform: translateY(-1px); }
+.reign-primary-cta { display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 28px; background: var(--paper); color: var(--ink); font-weight: 700; font-size: 0.85rem; letter-spacing: 0.08em; text-decoration: none; text-transform: uppercase; transform: rotate(-1.2deg); transition: all 120ms ease; }
+.reign-primary-cta:hover { background: var(--paper-bright); transform: translateY(-1px) rotate(-1.2deg); }
 .reign-x-handle { color: var(--paper-dim); font-size: 0.82rem; text-decoration: underline; text-underline-offset: 3px; }
 
 .reign-audit-record { padding: 20px; background: var(--ink); border: 1px solid var(--rule); margin-bottom: 28px; }
@@ -676,7 +703,8 @@ button, input, textarea, select { font: inherit; }
   .visitor-offer-zone { width: 100%; padding: 16px; margin-top: 12px; box-sizing: border-box; }
   .live-offer-headline { font-size: clamp(1.2rem, 5.5vw, 1.45rem); margin: 0 0 8px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .live-offer-pitch { font-size: 0.88rem; line-height: 1.4; margin: 0 auto 14px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  .visitor-outbound-cta { width: 100%; min-height: 48px; display: flex; justify-content: center; align-items: center; box-sizing: border-box; }
+  .visitor-cta-btn { width: 100%; min-height: 48px; display: flex; justify-content: center; align-items: center; box-sizing: border-box; }
+  .visitor-cta-btn:hover { transform: translateY(-1px) rotate(-1.2deg); }
 
   /* Competitor CTA Zone */
   .founder-takeover-zone { margin-top: 20px; padding-top: 16px; width: 100%; }
