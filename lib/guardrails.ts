@@ -17,11 +17,16 @@ const GEOGRAPHIES = [
 ];
 
 export function extractRegistrableDomain(urlString: string): string {
+  if (!urlString || typeof urlString !== "string") return "";
   try {
-    const parsed = new URL(urlString);
-    let host = parsed.hostname.toLowerCase();
+    let raw = urlString.trim();
+    if (!/^https?:\/\//i.test(raw)) {
+      raw = `https://${raw}`;
+    }
+    const parsed = new URL(raw);
+    let host = (parsed.hostname || "").toLowerCase();
     if (host.startsWith("www.")) host = host.slice(4);
-    // Simple 2-level domain extraction
+    if (!host) return "";
     const parts = host.split(".");
     if (parts.length >= 2) {
       return parts.slice(-2).join(".");
@@ -33,11 +38,13 @@ export function extractRegistrableDomain(urlString: string): string {
 }
 
 export function normalizeCategoryString(input: string): string {
+  if (!input || typeof input !== "string") return "";
   let s = input.toLowerCase().trim();
   // Remove punctuation
   s = s.replace(/[^\w\s-]/g, "").replace(/[-_]+/g, " ");
   const tokens = s.split(/\s+/).filter(Boolean);
   const normalizedTokens = tokens.map((token) => {
+    if (!token) return "";
     // Strip simple plural
     if (token.endsWith("ies") && token.length > 4) {
       token = token.slice(0, -3) + "y";
@@ -47,7 +54,7 @@ export function normalizeCategoryString(input: string): string {
       token = token.slice(0, -1);
     }
     return token;
-  }).filter((token) => !GENERIC_SUFFIXES.includes(token));
+  }).filter((token) => token && !GENERIC_SUFFIXES.includes(token));
 
   return normalizedTokens.join(" ");
 }

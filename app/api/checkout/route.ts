@@ -85,7 +85,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "That throne does not exist." }, { status: 404 });
     }
 
-    if (canonicalUrl(throne.kingUrl) === url) {
+    let isAlreadySitting = false;
+    try {
+      isAlreadySitting = canonicalUrl(throne.kingUrl) === url;
+    } catch {
+      isAlreadySitting = (throne.kingUrl || "").trim().toLowerCase() === url.toLowerCase();
+    }
+
+    if (isAlreadySitting) {
       return NextResponse.json({ error: "That product URL is already sitting on this throne." }, { status: 400 });
     }
 
