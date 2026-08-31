@@ -1,22 +1,48 @@
 import { getCheckoutContext } from "@/lib/checkouts";
 import { dollars } from "@/lib/format";
 import { ReturnActions } from "@/components/return-actions";
+import { getDodoClient } from "@/lib/payments";
+import { applySteal } from "@/lib/steals";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReturnPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ok?: string; id?: string }>;
+  searchParams: Promise<{ ok?: string; id?: string; payment_id?: string; status?: string }>;
 }) {
-  const { ok, id } = await searchParams;
-  const context = id ? await getCheckoutContext(id) : undefined;
+  const { ok, id, payment_id, status } = await searchParams;
 
-  if (ok !== "1" || !context?.reign) {
+  let context = id ? await getCheckoutContext(id) : undefined;
+
+  // Fallback verification: if webhook has not arrived yet, verify and apply steal immediately
+  if (id && (!context?.reign || context.checkout.status === "pending")) {
+    // If Dodo payment_id is provided, verify with Dodo Payments API
+    if (payment_id && process.env.STUB_PAYMENTS !== "true") {
+      try {
+        const client = getDodoClient();
+        const payment = await client.payments.retrieve(payment_id);
+        if (payment && payment.status === "succeeded") {
+          await applySteal(id);
+          context = await getCheckoutContext(id);
+        }
+      } catch (err) {
+        console.error("Direct payment verification on return page failed:", err);
+      }
+    } else if (ok === "1" && process.env.STUB_PAYMENTS === "true") {
+      // In stub mode, if not yet marked, apply steal
+      await applySteal(id);
+      context = await getCheckoutContext(id);
+    }
+  }
+
+  const isSuccess = (ok === "1" || status === "succeeded" || status === "success" || Boolean(context?.reign)) && Boolean(context?.reign);
+
+  if (!isSuccess || !context?.reign) {
     return (
       <article className="prose-page return-failed">
         <h1 className="display">Payment not completed</h1>
-        <p>Payment did not go through. The king did not move.</p>
+        <p>Payment did not go through or is still processing. The king did not move.</p>
         <p>
           <a
             className="steal-button"

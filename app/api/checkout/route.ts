@@ -29,9 +29,9 @@ const inputSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    if (process.env.STUB_PAYMENTS !== "true") {
+    if (process.env.STUB_PAYMENTS !== "true" && !process.env.DODO_PAYMENTS_API_KEY) {
       return NextResponse.json(
-        { error: "Cannot steal right now. The king stays." },
+        { error: "Payment gateway is not configured. The king stays." },
         { status: 503 },
       );
     }

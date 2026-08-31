@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import DodoPayments from "dodopayments";
 import { db } from "@/db";
 import { checkouts, thrones } from "@/db/schema";
 
@@ -26,12 +27,31 @@ export interface CreateCheckoutInput {
   expectedPreviousKing?: string;
   expectedPreviousStakeCents?: number;
   clientIp?: string;
+  customerEmail?: string;
+  customerName?: string;
   successUrl: string;
   cancelUrl: string;
 }
 
 export interface PaymentProvider {
   createCheckout(input: CreateCheckoutInput): Promise<{ checkoutId: string; redirectUrl: string }>;
+}
+
+let _dodoClient: DodoPayments | null = null;
+
+export function getDodoClient(): DodoPayments {
+  if (!_dodoClient) {
+    const apiKey = process.env.DODO_PAYMENTS_API_KEY;
+    if (!apiKey) {
+      throw new Error("DODO_PAYMENTS_API_KEY is not configured in environment variables.");
+    }
+    _dodoClient = new DodoPayments({
+      bearerToken: apiKey,
+      webhookKey: process.env.DODO_PAYMENTS_WEBHOOK_KEY || undefined,
+      environment: (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") || "test_mode",
+    });
+  }
+  return _dodoClient;
 }
 
 class StubProvider implements PaymentProvider {
@@ -76,5 +96,125 @@ class StubProvider implements PaymentProvider {
   }
 }
 
-// TODO: swap StubProvider for Dodo / live payment provider when ready
-export const paymentProvider: PaymentProvider = new StubProvider();
+let _cachedDefaultProductId: string | null = null;
+
+async function getOrCreateDodoProductId(client: DodoPayments): Promise<string> {
+  if (process.env.DODO_PAYMENTS_PRODUCT_ID) {
+    return process.env.DODO_PAYMENTS_PRODUCT_ID;
+  }
+  if (_cachedDefaultProductId) {
+    return _cachedDefaultProductId;
+  }
+
+  // Create a default Pay What You Want product on Dodo Payments
+  try {
+    const product = await client.products.create({
+      name: "Throne Takeover",
+      description: "Takeover of a category throne on unpaidking.lol",
+      tax_category: "digital_products",
+      price: {
+        type: "one_time_price",
+        currency: "USD",
+        price: 100, // $1.00 minimum
+        discount: 0,
+        pay_what_you_want: true,
+      },
+    });
+    _cachedDefaultProductId = product.product_id;
+    return product.product_id;
+  } catch (error) {
+    console.error("Failed to auto-create Dodo product. Please specify DODO_PAYMENTS_PRODUCT_ID in .env.local:", error);
+    throw new Error("Dodo Payments product not configured. Please set DODO_PAYMENTS_PRODUCT_ID in your environment.");
+  }
+}
+
+class DodoPaymentProvider implements PaymentProvider {
+  async createCheckout(input: CreateCheckoutInput) {
+    const client = getDodoClient();
+    let throneId: string | null = null;
+    let expectedPrevKing = input.expectedPreviousKing;
+    let expectedPrevStake = input.expectedPreviousStakeCents;
+
+    if (input.throneSlug) {
+      const [throne] = await db
+        .select()
+        .from(thrones)
+        .where(eq(thrones.slug, input.throneSlug))
+        .limit(1);
+      if (!throne) throw new Error("missing throne");
+      throneId = throne.id;
+      expectedPrevKing = throne.kingName;
+      expectedPrevStake = throne.stakeCents;
+    }
+
+    const checkoutId = randomUUID();
+    await db.insert(checkouts).values({
+      id: checkoutId,
+      throneId,
+      userId: input.userId ?? null,
+      proposedThrone: input.proposedThrone ?? null,
+      name: input.name,
+      url: input.url,
+      productXHandle: input.productXHandle ?? null,
+      productLogoUrl: input.productLogoUrl ?? null,
+      offerHeadline: input.offerHeadline,
+      offerPitch: input.offerPitch,
+      ctaLabel: input.ctaLabel,
+      offerExpiresAt: input.offerExpiresAt ?? null,
+      expectedPreviousKing: expectedPrevKing ?? null,
+      expectedPreviousStakeCents: expectedPrevStake ?? null,
+      amountCents: input.amountCents,
+      clientIp: input.clientIp ?? null,
+    });
+
+    const productId = await getOrCreateDodoProductId(client);
+
+    // Build return URL with checkoutId attached
+    const returnUrl = new URL(input.successUrl);
+    returnUrl.searchParams.set("id", checkoutId);
+
+    const session = await client.checkoutSessions.create({
+      product_cart: [
+        {
+          product_id: productId,
+          quantity: 1,
+          amount: input.amountCents,
+        },
+      ],
+      return_url: returnUrl.toString(),
+      cancel_url: input.cancelUrl,
+      metadata: {
+        checkoutId,
+        throneSlug: input.throneSlug || "",
+        userId: input.userId || "",
+        productName: input.name,
+      },
+      customer: input.customerEmail
+        ? {
+            email: input.customerEmail,
+            name: input.customerName || input.name,
+          }
+        : undefined,
+    });
+
+    if (!session.checkout_url) {
+      throw new Error("Dodo Payments checkout session did not return a checkout URL.");
+    }
+
+    return { checkoutId, redirectUrl: session.checkout_url };
+  }
+}
+
+class DynamicPaymentProvider implements PaymentProvider {
+  private stub = new StubProvider();
+  private dodo = new DodoPaymentProvider();
+
+  async createCheckout(input: CreateCheckoutInput) {
+    if (process.env.STUB_PAYMENTS === "true") {
+      return this.stub.createCheckout(input);
+    }
+    return this.dodo.createCheckout(input);
+  }
+}
+
+export const paymentProvider: PaymentProvider = new DynamicPaymentProvider();

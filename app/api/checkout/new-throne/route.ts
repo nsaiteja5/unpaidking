@@ -36,9 +36,9 @@ const newThroneSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    if (process.env.STUB_PAYMENTS !== "true") {
+    if (process.env.STUB_PAYMENTS !== "true" && !process.env.DODO_PAYMENTS_API_KEY) {
       return NextResponse.json(
-        { error: "Cannot create thrones right now." },
+        { error: "Payment gateway is not configured. Cannot create thrones right now." },
         { status: 503 },
       );
     }

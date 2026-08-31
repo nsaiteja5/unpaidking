@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -26,6 +27,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           <main className="page-main">{children}</main>
           <SiteFooter />
         </div>
+        <Analytics />
       </body>
     </html>
   );
