@@ -86,6 +86,27 @@ async function runDodoTests() {
   // Restore API key
   if (!originalApiKey) delete process.env.DODO_PAYMENTS_API_KEY;
 
+  // 4. Test Live Dodo Checkout Session Creation (when API key is present)
+  if (process.env.DODO_PAYMENTS_API_KEY) {
+    console.log("\n[TEST 4] Testing Live Dodo Checkout Session Creation...");
+    process.env.STUB_PAYMENTS = "false";
+    const dodoCheckout = await paymentProvider.createCheckout({
+      throneSlug: throne.slug,
+      name: "DodoLiveProduct",
+      url: `https://dodolive-${Date.now()}.com`,
+      offerHeadline: "Test live headline for Dodo integration verification",
+      offerPitch: "Test live pitch description for Dodo payments integration test.",
+      ctaLabel: "Try DodoLive",
+      amountCents: targetStake,
+      successUrl: "https://unpaidking.lol/checkout/return?ok=1",
+      cancelUrl: `https://unpaidking.lol/t/${throne.slug}#steal`,
+    });
+    assert(dodoCheckout.checkoutId, "Dodo checkout should return checkoutId");
+    assert(dodoCheckout.redirectUrl.startsWith("https://"), "Dodo redirectUrl should be a secure https checkout URL");
+    console.log(`✓ Live Dodo checkout created successfully: ${dodoCheckout.redirectUrl}`);
+    process.env.STUB_PAYMENTS = "true";
+  }
+
   console.log("\n==========================================");
   console.log("ALL DODO INTEGRATION TESTS PASSED!");
   console.log("==========================================");

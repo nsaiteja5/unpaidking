@@ -41,14 +41,19 @@ let _dodoClient: DodoPayments | null = null;
 
 export function getDodoClient(): DodoPayments {
   if (!_dodoClient) {
-    const apiKey = process.env.DODO_PAYMENTS_API_KEY;
+    const apiKey = (process.env.DODO_PAYMENTS_API_KEY || "").trim();
     if (!apiKey) {
       throw new Error("DODO_PAYMENTS_API_KEY is not configured in environment variables.");
     }
+    const rawEnv = (process.env.DODO_PAYMENTS_ENVIRONMENT || "").trim().toLowerCase();
+    const isLive = rawEnv === "live" || rawEnv === "live_mode" || rawEnv === "production";
+    const baseURL = isLive ? "https://live.dodopayments.com" : "https://test.dodopayments.com";
+    const webhookKey = (process.env.DODO_PAYMENTS_WEBHOOK_KEY || "").trim() || undefined;
+
     _dodoClient = new DodoPayments({
       bearerToken: apiKey,
-      webhookKey: process.env.DODO_PAYMENTS_WEBHOOK_KEY || undefined,
-      environment: (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") || "test_mode",
+      webhookKey,
+      baseURL,
     });
   }
   return _dodoClient;
