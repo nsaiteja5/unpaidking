@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import DodoPayments from "dodopayments";
-import { db } from "@/db";
+import { db, ensureDatabaseReady, pool } from "@/db";
 import { checkouts, thrones } from "@/db/schema";
 
 export interface CreateCheckoutInput {
@@ -56,6 +56,7 @@ export function getDodoClient(): DodoPayments {
 
 class StubProvider implements PaymentProvider {
   async createCheckout(input: CreateCheckoutInput) {
+    await ensureDatabaseReady(pool);
     let throneId: string | null = null;
     let expectedPrevKing = input.expectedPreviousKing;
     let expectedPrevStake = input.expectedPreviousStakeCents;
@@ -106,6 +107,17 @@ async function getOrCreateDodoProductId(client: DodoPayments): Promise<string> {
     return _cachedDefaultProductId;
   }
 
+  const defaultKnownId = "pdt_0NmZ2axWydvYV8A0Eltxz";
+  try {
+    const existing = await client.products.retrieve(defaultKnownId);
+    if (existing?.product_id) {
+      _cachedDefaultProductId = existing.product_id;
+      return existing.product_id;
+    }
+  } catch {
+    // If not found in account/mode, create dynamically
+  }
+
   // Create a default Pay What You Want product on Dodo Payments
   try {
     const product = await client.products.create({
@@ -123,13 +135,14 @@ async function getOrCreateDodoProductId(client: DodoPayments): Promise<string> {
     _cachedDefaultProductId = product.product_id;
     return product.product_id;
   } catch (error) {
-    console.error("Failed to auto-create Dodo product. Please specify DODO_PAYMENTS_PRODUCT_ID in .env.local:", error);
-    throw new Error("Dodo Payments product not configured. Please set DODO_PAYMENTS_PRODUCT_ID in your environment.");
+    console.error("Failed to auto-create Dodo product:", error);
+    return defaultKnownId;
   }
 }
 
 class DodoPaymentProvider implements PaymentProvider {
   async createCheckout(input: CreateCheckoutInput) {
+    await ensureDatabaseReady(pool);
     const client = getDodoClient();
     let throneId: string | null = null;
     let expectedPrevKing = input.expectedPreviousKing;
@@ -170,8 +183,17 @@ class DodoPaymentProvider implements PaymentProvider {
     const productId = await getOrCreateDodoProductId(client);
 
     // Build return URL with checkoutId attached
-    const returnUrl = new URL(input.successUrl);
-    returnUrl.searchParams.set("id", checkoutId);
+    let returnUrlStr: string;
+    try {
+      const u = new URL(input.successUrl);
+      u.searchParams.set("id", checkoutId);
+      returnUrlStr = u.toString();
+    } catch {
+      const base = process.env.NEXT_PUBLIC_BASE_URL || "https://unpaidking.lol";
+      const u = new URL(input.successUrl, base);
+      u.searchParams.set("id", checkoutId);
+      returnUrlStr = u.toString();
+    }
 
     const session = await client.checkoutSessions.create({
       product_cart: [
@@ -181,7 +203,7 @@ class DodoPaymentProvider implements PaymentProvider {
           amount: input.amountCents,
         },
       ],
-      return_url: returnUrl.toString(),
+      return_url: returnUrlStr,
       cancel_url: input.cancelUrl,
       metadata: {
         checkoutId,

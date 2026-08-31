@@ -166,10 +166,11 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ redirectUrl: checkout.redirectUrl });
-  } catch (error) {
+  } catch (error: any) {
     console.error("New throne checkout error:", error);
+    const message = error?.message || "Cannot create throne right now. Please try again.";
     return NextResponse.json(
-      { error: "Cannot create throne right now. Please try again." },
+      { error: message },
       { status: 500 },
     );
   }

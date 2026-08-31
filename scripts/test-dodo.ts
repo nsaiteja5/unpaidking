@@ -9,6 +9,7 @@ import { db } from "@/db";
 import { checkouts, thrones } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { applySteal } from "@/lib/steals";
+import { nextStealPrice } from "@/lib/format";
 
 async function runDodoTests() {
   console.log("==========================================");
@@ -53,16 +54,20 @@ async function runDodoTests() {
 
   // 3. Test Webhook Processing Logic & applySteal Idempotency
   console.log("\n[TEST 3] Testing Webhook Simulation & Idempotency...");
+  const isUnpaidDefault = throne.stakeCents === 0 && throne.kingName === throne.defaultKingName;
+  const targetStake = nextStealPrice(throne.stakeCents, isUnpaidDefault);
+
+  const uniqueProductUrl = `https://webhookking-${Date.now()}.com`;
   const webhookCheckoutId = randomUUID();
   await db.insert(checkouts).values({
     id: webhookCheckoutId,
     throneId: throne.id,
     name: "WebhookKing",
-    url: "https://webhookking.com",
+    url: uniqueProductUrl,
     offerHeadline: "Webhook simulated takeover headline text 12345",
     offerPitch: "Webhook simulated takeover pitch text describing the product nicely.",
     ctaLabel: "Try WebhookKing",
-    amountCents: throne.stakeCents === 0 ? 900 : throne.stakeCents + 100,
+    amountCents: targetStake,
     expectedPreviousKing: throne.kingName,
     expectedPreviousStakeCents: throne.stakeCents,
   });

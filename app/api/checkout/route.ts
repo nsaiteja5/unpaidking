@@ -138,10 +138,11 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ redirectUrl: checkout.redirectUrl });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Checkout creation error:", error);
+    const message = error?.message || "Cannot create takeover right now. Please try again.";
     return NextResponse.json(
-      { error: "Cannot create takeover right now. Please try again." },
+      { error: message },
       { status: 500 },
     );
   }
