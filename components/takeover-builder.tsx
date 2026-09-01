@@ -318,7 +318,6 @@ export function TakeoverBuilder({
                 placeholder={String(Math.ceil(minTargetStakeCents / 100))}
                 autoFocus={Boolean(onClose)}
               />
-              <span className="stake-cursor-blink" aria-hidden="true" />
             </div>
 
             {/* Quick Add Pills */}

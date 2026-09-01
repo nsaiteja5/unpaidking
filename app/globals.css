@@ -371,19 +371,6 @@ button, input, textarea, select { font: inherit; }
 .stake-hero-input:focus {
   border-color: var(--gold-hover);
 }
-@keyframes blinkCursor {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-.stake-cursor-blink {
-  display: inline-block;
-  width: 3px;
-  height: clamp(2.2rem, 5vw, 3.2rem);
-  background: var(--gold);
-  margin-left: 2px;
-  animation: blinkCursor 1s infinite;
-}
-
 /* Quick Add Pills */
 .stake-pills-row {
   display: flex;
