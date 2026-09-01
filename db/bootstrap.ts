@@ -118,6 +118,7 @@ export async function ensureDatabaseReady(pool: Pool): Promise<void> {
           \`expected_previous_king\` varchar(40) DEFAULT NULL,
           \`expected_previous_stake_cents\` int DEFAULT NULL,
           \`amount_cents\` int NOT NULL,
+          \`kind\` enum('steal','defend') NOT NULL DEFAULT 'steal',
           \`status\` enum('pending','paid','stale','canceled') NOT NULL DEFAULT 'pending',
           \`client_ip\` varchar(64) DEFAULT NULL,
           \`created_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -208,6 +209,13 @@ export async function ensureDatabaseReady(pool: Pool): Promise<void> {
         const [checkoutsCols] = await pool.query("SHOW COLUMNS FROM `checkouts` LIKE 'user_id'");
         if (Array.isArray(checkoutsCols) && checkoutsCols.length === 0) {
           await pool.query("ALTER TABLE `checkouts` ADD COLUMN `user_id` char(36) DEFAULT NULL AFTER `throne_id`");
+        }
+      } catch {}
+
+      try {
+        const [checkoutsKindCols] = await pool.query("SHOW COLUMNS FROM `checkouts` LIKE 'kind'");
+        if (Array.isArray(checkoutsKindCols) && checkoutsKindCols.length === 0) {
+          await pool.query("ALTER TABLE `checkouts` ADD COLUMN `kind` enum('steal','defend') NOT NULL DEFAULT 'steal' AFTER `amount_cents`");
         }
       } catch {}
 

@@ -26,17 +26,22 @@ export default async function CheckoutPage({
   }
 
   const { checkout, throne } = context;
+  const isDefend = checkout.kind === "defend";
   const priceFormatted = dollars(checkout.amountCents);
   const previousKing = checkout.expectedPreviousKing || throne.kingName;
+  const priorStakeCents = checkout.expectedPreviousStakeCents ?? throne.stakeCents;
+  const newStakeCents = priorStakeCents + checkout.amountCents;
 
   const cancelUrl = checkout.throneId ? `/t/${throne.slug}#steal` : "/start";
 
   return (
     <article className="checkout-sheet" aria-label="Review and Pay Checkout">
       <header className="checkout-header">
-        <p className="smallcaps">You are buying</p>
+        <p className="smallcaps">{isDefend ? "You are defending" : "You are buying"}</p>
         <h1 className="display checkout-title">
-          The {throne.category} throne for {checkout.name}
+          {isDefend
+            ? `${checkout.name} holds the ${throne.category} throne`
+            : `The ${throne.category} throne for ${checkout.name}`}
         </h1>
         <div className="checkout-total-row">
           <span className="smallcaps">Total</span>
@@ -54,42 +59,80 @@ export default async function CheckoutPage({
           <span className="mini-label">Offer:</span>
           <em>"{checkout.offerHeadline}"</em>
         </div>
-        <div className="mini-preview-row">
-          <span className="mini-label">Dethroning:</span>
-          <span>{previousKing}</span>
-        </div>
-        <div className="mini-preview-row">
-          <span className="mini-label">Permanent URL:</span>
-          <span>Permanent campaign URL created after payment</span>
-        </div>
+        {isDefend ? (
+          <>
+            <div className="mini-preview-row">
+              <span className="mini-label">Current stake:</span>
+              <span className="money">{dollars(priorStakeCents)}</span>
+            </div>
+            <div className="mini-preview-row">
+              <span className="mini-label">New stake after payment:</span>
+              <span className="money">{dollars(newStakeCents)}</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mini-preview-row">
+              <span className="mini-label">Dethroning:</span>
+              <span>{previousKing}</span>
+            </div>
+            <div className="mini-preview-row">
+              <span className="mini-label">Permanent URL:</span>
+              <span>Permanent campaign URL created after payment</span>
+            </div>
+          </>
+        )}
       </section>
 
       {/* Deliverables Included */}
       <section className="checkout-inclusions" aria-label="Deliverables Included">
-        <div className="checkout-inclusion-item">
-          <h2 className="smallcaps">LIVE UNTIL DETHRONED</h2>
-          <p className="checkout-inclusion-desc">
-            The throne stays yours until another founder takes it.
-          </p>
-        </div>
-        <div className="checkout-inclusion-item">
-          <h2 className="smallcaps">YOURS FOREVER</h2>
-          <p className="checkout-inclusion-desc">
-            Your campaign page, share card, and tracked link never expire.
-          </p>
-        </div>
+        {isDefend ? (
+          <>
+            <div className="checkout-inclusion-item">
+              <h2 className="smallcaps">STAKE GOES UP</h2>
+              <p className="checkout-inclusion-desc">
+                Raising your buyout price makes it costlier for any rival to take your seat.
+              </p>
+            </div>
+            <div className="checkout-inclusion-item">
+              <h2 className="smallcaps">NOTHING ELSE CHANGES</h2>
+              <p className="checkout-inclusion-desc">
+                Your campaign page, share card, and tracked link stay exactly as they are.
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="checkout-inclusion-item">
+              <h2 className="smallcaps">LIVE UNTIL DETHRONED</h2>
+              <p className="checkout-inclusion-desc">
+                The throne stays yours until another founder takes it.
+              </p>
+            </div>
+            <div className="checkout-inclusion-item">
+              <h2 className="smallcaps">YOURS FOREVER</h2>
+              <p className="checkout-inclusion-desc">
+                Your campaign page, share card, and tracked link never expire.
+              </p>
+            </div>
+          </>
+        )}
       </section>
 
       <div className="checkout-actions">
         <PayButton
           checkoutId={checkout.id}
           amountCents={checkout.amountCents}
+          actionLabel={isDefend ? `PAY ${priceFormatted} AND DEFEND MY THRONE` : undefined}
+          busyLabel={isDefend ? "DEFENDING..." : undefined}
         />
         <p className="checkout-footnote">
-          {priceFormatted} once. Your throne may change hands. Your campaign stays yours.
+          {isDefend
+            ? `${priceFormatted} once. The throne stays yours. The price to take it just went up.`
+            : `${priceFormatted} once. Your throne may change hands. Your campaign stays yours.`}
         </p>
         <a className="checkout-cancel-link" href={cancelUrl}>
-          Edit my takeover
+          {isDefend ? "Back to my throne" : "Edit my takeover"}
         </a>
       </div>
     </article>

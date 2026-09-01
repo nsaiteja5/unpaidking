@@ -24,6 +24,7 @@ export interface CreateCheckoutInput {
   ctaLabel: string;
   offerExpiresAt?: Date;
   amountCents: number;
+  kind?: "steal" | "defend";
   expectedPreviousKing?: string;
   expectedPreviousStakeCents?: number;
   clientIp?: string;
@@ -95,6 +96,7 @@ class StubProvider implements PaymentProvider {
       expectedPreviousKing: expectedPrevKing ?? null,
       expectedPreviousStakeCents: expectedPrevStake ?? null,
       amountCents: input.amountCents,
+      kind: input.kind ?? "steal",
       clientIp: input.clientIp ?? null,
     });
 
@@ -182,6 +184,7 @@ class DodoPaymentProvider implements PaymentProvider {
       expectedPreviousKing: expectedPrevKing ?? null,
       expectedPreviousStakeCents: expectedPrevStake ?? null,
       amountCents: input.amountCents,
+      kind: input.kind ?? "steal",
       clientIp: input.clientIp ?? null,
     });
 

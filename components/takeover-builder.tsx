@@ -316,7 +316,7 @@ export function TakeoverBuilder({
                 value={inputValue}
                 onChange={(e) => handleAmountChange(e.target.value)}
                 placeholder={String(Math.ceil(minTargetStakeCents / 100))}
-                autoFocus
+                autoFocus={Boolean(onClose)}
               />
               <span className="stake-cursor-blink" aria-hidden="true" />
             </div>

@@ -90,6 +90,7 @@ export const checkouts = mysqlTable("checkouts", {
   expectedPreviousKing: varchar("expected_previous_king", { length: 40 }),
   expectedPreviousStakeCents: int("expected_previous_stake_cents"),
   amountCents: int("amount_cents").notNull(),
+  kind: mysqlEnum("kind", ["steal", "defend"]).notNull().default("steal"),
   status: mysqlEnum("status", ["pending", "paid", "stale", "canceled"]).notNull().default("pending"),
   clientIp: varchar("client_ip", { length: 64 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),

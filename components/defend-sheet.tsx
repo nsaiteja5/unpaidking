@@ -7,7 +7,6 @@ type Props = {
   category: string;
   currentStakeCents: number;
   onClose: () => void;
-  onDefended: (newStakeCents: number) => void;
 };
 
 export function DefendSheet({
@@ -15,7 +14,6 @@ export function DefendSheet({
   category,
   currentStakeCents,
   onClose,
-  onDefended,
 }: Props) {
   const [amount, setAmount] = useState<number>(1);
   const [busy, setBusy] = useState(false);
@@ -35,23 +33,27 @@ export function DefendSheet({
     setError("");
 
     try {
-      const res = await fetch(`/api/thrones/${slug}/defend`, {
+      const res = await fetch(`/api/checkout/defend`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ slug, amount }),
       });
 
       const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setError(data.error || "Failed to raise buyout.");
+      if (!res.ok || !data.redirectUrl) {
+        if (res.status === 401) {
+          const returnTo = typeof window !== "undefined" ? window.location.pathname : "/";
+          window.location.assign(`/api/auth/x/login?returnTo=${encodeURIComponent(returnTo)}`);
+          return;
+        }
+        setError(data.error || "Failed to start defense checkout.");
+        setBusy(false);
         return;
       }
 
-      onDefended(data.newStakeCents);
-      onClose();
+      window.location.assign(data.redirectUrl);
     } catch {
       setError("Network error. Please try again.");
-    } finally {
       setBusy(false);
     }
   };
@@ -151,7 +153,7 @@ export function DefendSheet({
                 className="steal-button defend-submit-btn"
                 disabled={busy}
               >
-                {busy ? "DEFENDING..." : `PAY ${dollars((isNaN(amount) || amount < 1 ? 1 : amount) * 100)} TO DEFEND`}
+                {busy ? "TAKING YOU TO CHECKOUT..." : `PROCEED TO CHECKOUT · ${dollars((isNaN(amount) || amount < 1 ? 1 : amount) * 100)}`}
               </button>
             </div>
           </form>

@@ -5,9 +5,13 @@ import { dollars } from "@/lib/format";
 export function PayButton({
   checkoutId,
   amountCents,
+  actionLabel,
+  busyLabel,
 }: {
   checkoutId: string;
   amountCents: number;
+  actionLabel?: string;
+  busyLabel?: string;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -34,7 +38,7 @@ export function PayButton({
       onClick={pay}
       type="button"
     >
-      {busy ? "CONFIRMING REIGN..." : `PAY ${dollars(amountCents)} AND CREATE MY REIGN`}
+      {busy ? busyLabel ?? "CONFIRMING REIGN..." : actionLabel ?? `PAY ${dollars(amountCents)} AND CREATE MY REIGN`}
     </button>
   );
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDodoClient } from "@/lib/payments";
-import { applySteal } from "@/lib/steals";
+import { applyCheckoutPayment } from "@/lib/steals";
 import { db } from "@/db";
 import { checkouts } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -54,11 +54,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ received: true, note: "missing checkoutId in metadata" });
       }
 
-      console.log(`[Dodo Webhook] Applying steal for checkout: ${checkoutId}`);
-      const stealResult = await applySteal(checkoutId);
-      console.log(`[Dodo Webhook] Steal outcome for checkout ${checkoutId}:`, stealResult.outcome);
+      console.log(`[Dodo Webhook] Applying payment for checkout: ${checkoutId}`);
+      const applyResult = await applyCheckoutPayment(checkoutId);
+      console.log(`[Dodo Webhook] Payment outcome for checkout ${checkoutId}:`, applyResult.outcome);
 
-      return NextResponse.json({ received: true, outcome: stealResult.outcome });
+      return NextResponse.json({ received: true, outcome: applyResult.outcome });
     }
 
     if (event.type === "payment.failed") {

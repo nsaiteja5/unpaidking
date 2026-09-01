@@ -102,13 +102,6 @@ export function ThroneStage({
         `The throne of ${throne.category} on @unpaidking is occupied by ${throne.kingName}.`
       )}`;
 
-  const handleDefended = (newStake: number) => {
-    setStakeCents(newStake);
-    if (onThroneUpdated) {
-      onThroneUpdated({ stakeCents: newStake });
-    }
-  };
-
   const handleOfferSaved = (saved: { offerHeadline: string; offerPitch: string; ctaLabel: string }) => {
     if (currentReign) {
       const updated = {
@@ -331,7 +324,6 @@ export function ThroneStage({
           category={throne.category}
           currentStakeCents={stakeCents}
           onClose={() => setDefendOpen(false)}
-          onDefended={handleDefended}
         />
       )}
 

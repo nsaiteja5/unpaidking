@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { applySteal } from "@/lib/steals";
+import { applyCheckoutPayment } from "@/lib/steals";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await applySteal(body.id);
+    const result = await applyCheckoutPayment(body.id);
     if (result.outcome === "sitting") {
       return NextResponse.json({
         redirectUrl: `/checkout/return?ok=1&id=${body.id}`,

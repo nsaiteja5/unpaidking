@@ -17,6 +17,8 @@ export type ApplyStealResult =
       name: string;
       publicId: string;
       isNewThrone?: boolean;
+      isDefend?: boolean;
+      newStakeCents?: number;
     }
   | { outcome: "stale" }
   | { outcome: "missing" };
@@ -260,4 +262,109 @@ export async function applySteal(checkoutId: string): Promise<ApplyStealResult> 
 
     return { outcome: "missing" };
   });
+}
+
+/**
+ * Applies a paid "defend" checkout — the sitting king adding to their own
+ * stake. Unlike applySteal, this never changes who sits on the throne and
+ * never creates a new reign row; it raises the throne's stake and the
+ * current reign's amount in place. Idempotent on checkout status.
+ */
+export async function applyDefend(checkoutId: string): Promise<ApplyStealResult> {
+  await ensureDatabaseReady(pool);
+  return db.transaction(async (tx) => {
+    const [checkout] = await tx
+      .select()
+      .from(checkouts)
+      .where(eq(checkouts.id, checkoutId))
+      .for("update");
+
+    if (!checkout || !checkout.throneId) return { outcome: "missing" };
+
+    // Idempotency: if this defend was already applied, report the current state.
+    if (checkout.status === "paid") {
+      const [throne] = await tx.select().from(thrones).where(eq(thrones.id, checkout.throneId));
+      const [currentReign] = await tx
+        .select()
+        .from(reigns)
+        .where(and(eq(reigns.throneId, checkout.throneId), eq(reigns.status, "current")));
+
+      if (!throne || !currentReign) return { outcome: "missing" };
+
+      return {
+        outcome: "sitting",
+        slug: throne.slug,
+        category: throne.category,
+        previous: throne.kingName,
+        price: checkout.amountCents,
+        oldStake: throne.stakeCents - checkout.amountCents,
+        name: throne.kingName,
+        publicId: currentReign.publicId,
+        isDefend: true,
+        newStakeCents: throne.stakeCents,
+      };
+    }
+
+    if (checkout.status === "stale" || checkout.status === "canceled") {
+      return { outcome: "stale" };
+    }
+
+    const [throne] = await tx
+      .select()
+      .from(thrones)
+      .where(eq(thrones.id, checkout.throneId))
+      .for("update");
+
+    if (!throne) return { outcome: "missing" };
+
+    const [currentReign] = await tx
+      .select()
+      .from(reigns)
+      .where(and(eq(reigns.throneId, throne.id), eq(reigns.status, "current")))
+      .for("update");
+
+    if (!currentReign) return { outcome: "missing" };
+
+    const newStake = throne.stakeCents + checkout.amountCents;
+
+    await tx.update(checkouts).set({ status: "paid" }).where(eq(checkouts.id, checkout.id));
+
+    await tx
+      .update(thrones)
+      .set({ stakeCents: newStake, updatedAt: new Date() })
+      .where(eq(thrones.id, throne.id));
+
+    await tx
+      .update(reigns)
+      .set({ amountCents: currentReign.amountCents + checkout.amountCents })
+      .where(eq(reigns.id, currentReign.id));
+
+    return {
+      outcome: "sitting",
+      slug: throne.slug,
+      category: throne.category,
+      previous: throne.kingName,
+      price: checkout.amountCents,
+      oldStake: throne.stakeCents,
+      name: throne.kingName,
+      publicId: currentReign.publicId,
+      isDefend: true,
+      newStakeCents: newStake,
+    };
+  });
+}
+
+/** Dispatches a paid checkout to the right applier based on its kind. */
+export async function applyCheckoutPayment(checkoutId: string): Promise<ApplyStealResult> {
+  await ensureDatabaseReady(pool);
+  const [checkout] = await db
+    .select({ kind: checkouts.kind })
+    .from(checkouts)
+    .where(eq(checkouts.id, checkoutId))
+    .limit(1);
+
+  if (checkout?.kind === "defend") {
+    return applyDefend(checkoutId);
+  }
+  return applySteal(checkoutId);
 }

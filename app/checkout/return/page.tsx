@@ -2,7 +2,7 @@ import { getCheckoutContext } from "@/lib/checkouts";
 import { dollars } from "@/lib/format";
 import { ReturnActions } from "@/components/return-actions";
 import { getDodoClient } from "@/lib/payments";
-import { applySteal } from "@/lib/steals";
+import { applyCheckoutPayment } from "@/lib/steals";
 
 export const dynamic = "force-dynamic";
 
@@ -23,15 +23,15 @@ export default async function ReturnPage({
         const client = getDodoClient();
         const payment = await client.payments.retrieve(payment_id);
         if (payment && payment.status === "succeeded") {
-          await applySteal(id);
+          await applyCheckoutPayment(id);
           context = await getCheckoutContext(id);
         }
       } catch (err) {
         console.error("Direct payment verification on return page failed:", err);
       }
     } else if (ok === "1" && process.env.STUB_PAYMENTS === "true") {
-      // In stub mode, if not yet marked, apply steal
-      await applySteal(id);
+      // In stub mode, if not yet marked, apply the checkout now
+      await applyCheckoutPayment(id);
       context = await getCheckoutContext(id);
     }
   }
@@ -56,9 +56,10 @@ export default async function ReturnPage({
   }
 
   const { checkout, throne, reign } = context;
+  const isDefend = checkout.kind === "defend";
   const previousKing = reign.fromName || (("defaultKingName" in throne) ? throne.defaultKingName : throne.kingName);
   const isDefaultPrev = (reign.fromStakeCents ?? 0) === 0 || reign.amountCents === 900;
-  const isReconquest = checkout.amountCents < reign.amountCents;
+  const isReconquest = !isDefend && checkout.amountCents < reign.amountCents;
   const publicId = reign.publicId;
 
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "https://unpaidking.lol";
@@ -66,11 +67,14 @@ export default async function ReturnPage({
   const ogImageUrl = `/r/${publicId}/og`;
 
   const headlineText = reign.offerHeadline || `${reign.kingName} takes the throne`;
-  const postText = isReconquest
-    ? `${headlineText}\n\n${reign.kingName} just RECLAIMED the ${throne.category} throne from ${previousKing}.\n\nThe crown is back where it belongs. Live throne restored.\n\n${publicUrl}`
-    : isDefaultPrev
-      ? `${headlineText}\n\n${reign.kingName} just dethroned ${previousKing} for the ${throne.category} throne.\n\nThey were king by default and paid $0. We paid ${dollars(checkout.amountCents)} to remove them.\n\n${publicUrl}`
-      : `${headlineText}\n\n${reign.kingName} just dethroned ${previousKing} for the ${throne.category} throne.\n\nThey sat there for ${dollars(reign.fromStakeCents ?? 0)}. We paid ${dollars(checkout.amountCents)} to take the seat.\n\n${publicUrl}`;
+  const nextBuyoutCents = reign.amountCents + 100;
+  const postText = isDefend
+    ? `${headlineText}\n\n${reign.kingName} just paid ${dollars(checkout.amountCents)} to defend the ${throne.category} throne.\n\nNew buyout price: ${dollars(reign.amountCents)}. Anyone who wants it now pays ${dollars(nextBuyoutCents)}.\n\n${publicUrl}`
+    : isReconquest
+      ? `${headlineText}\n\n${reign.kingName} just RECLAIMED the ${throne.category} throne from ${previousKing}.\n\nThe crown is back where it belongs. Live throne restored.\n\n${publicUrl}`
+      : isDefaultPrev
+        ? `${headlineText}\n\n${reign.kingName} just dethroned ${previousKing} for the ${throne.category} throne.\n\nThey were king by default and paid $0. We paid ${dollars(checkout.amountCents)} to remove them.\n\n${publicUrl}`
+        : `${headlineText}\n\n${reign.kingName} just dethroned ${previousKing} for the ${throne.category} throne.\n\nThey sat there for ${dollars(reign.fromStakeCents ?? 0)}. We paid ${dollars(checkout.amountCents)} to take the seat.\n\n${publicUrl}`;
 
   const xIntentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(postText)}`;
 
@@ -78,14 +82,18 @@ export default async function ReturnPage({
     <article className="checkout-sheet return-sheet" aria-label="Takeover Success">
       <header className="return-header">
         <h1 className="display return-title">
-          {isReconquest
-            ? `${reign.kingName.toUpperCase()} RECLAIMED THE ${throne.category.toUpperCase()} THRONE.`
-            : `${reign.kingName.toUpperCase()} TOOK THE ${throne.category.toUpperCase()} THRONE.`}
+          {isDefend
+            ? `${reign.kingName.toUpperCase()} DEFENDED THE ${throne.category.toUpperCase()} THRONE.`
+            : isReconquest
+              ? `${reign.kingName.toUpperCase()} RECLAIMED THE ${throne.category.toUpperCase()} THRONE.`
+              : `${reign.kingName.toUpperCase()} TOOK THE ${throne.category.toUpperCase()} THRONE.`}
         </h1>
         <p className="return-sub">
-          {isReconquest
-            ? `The crown was returned to ${reign.kingName}. ${previousKing} is dethroned.`
-            : `${previousKing} is off the live throne.`}
+          {isDefend
+            ? `The stake is now ${dollars(reign.amountCents)}. Any challenger must pay ${dollars(nextBuyoutCents)} to take it.`
+            : isReconquest
+              ? `The crown was returned to ${reign.kingName}. ${previousKing} is dethroned.`
+              : `${previousKing} is off the live throne.`}
         </p>
       </header>
 
