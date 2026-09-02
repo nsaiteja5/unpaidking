@@ -127,6 +127,13 @@ export function ThroneStage({
     if (onDethrone) {
       e.preventDefault();
       onDethrone();
+      return;
+    }
+
+    const takeoverTarget = document.getElementById("steal");
+    if (takeoverTarget) {
+      e.preventDefault();
+      takeoverTarget.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
