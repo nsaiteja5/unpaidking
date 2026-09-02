@@ -531,6 +531,11 @@ button, input, textarea, select { font: inherit; }
 .new-throne-story-preview { padding: 16px; background: #120f0d; border: 1px solid var(--rule); margin-bottom: 20px; }
 .story-step-1 { color: var(--paper-dim); font-size: 0.9rem; margin: 0 0 6px; }
 .story-step-2 { color: var(--gold); font-size: 1.05rem; margin: 0; font-family: var(--font-newsreader), Georgia, serif; }
+.throne-deployed-overlay { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 20px; background: rgba(14, 12, 10, 0.9); }
+.throne-deployed-popup { width: min(100%, 560px); padding: 30px; background: var(--ink-2); border: 1px solid var(--gold); color: var(--paper); box-shadow: 0 20px 70px rgba(0, 0, 0, 0.65); }
+.throne-deployed-popup h2 { margin: 8px 0 14px; color: var(--gold); font-size: clamp(2.3rem, 8vw, 4rem); line-height: 0.9; }
+.throne-deployed-popup p:not(.smallcaps) { color: var(--paper-dim); line-height: 1.55; margin: 0 0 22px; }
+.throne-deployed-popup .steal-button { width: 100%; min-height: 50px; }
 
 /* Checkout Sheet */
 .checkout-sheet { max-width: 540px; margin: 32px auto; padding: 32px; color: var(--ink); background: var(--paper); box-shadow: 0 16px 40px rgba(0,0,0,0.5); }

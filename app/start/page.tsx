@@ -38,6 +38,8 @@ export default function StartThronePage() {
   const [expiresAt, setExpiresAt] = useState("");
 
   const [attestation, setAttestation] = useState(false);
+  const [throneSlug, setThroneSlug] = useState("");
+  const [deployedNotice, setDeployedNotice] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -110,7 +112,7 @@ export default function StartThronePage() {
     return true;
   }
 
-  async function submitNewThrone() {
+  async function deployThrone() {
     if (!user) {
       window.location.assign(`/api/auth/x/login?returnTo=${encodeURIComponent("/start")}`);
       return;
@@ -120,7 +122,7 @@ export default function StartThronePage() {
     setError("");
 
     try {
-      const response = await fetch("/api/checkout/new-throne", {
+      const response = await fetch("/api/thrones/create", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -131,6 +133,58 @@ export default function StartThronePage() {
           defaultRivalXHandle: defaultRivalXHandle.trim() || undefined,
           competitorUrl1: competitorUrl1.trim(),
           competitorUrl2: competitorUrl2.trim(),
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        if (response.status === 401) {
+          window.location.assign(`/api/auth/x/login?returnTo=${encodeURIComponent("/start")}`);
+          return;
+        }
+        setError(result.error || "Cannot deploy this throne right now.");
+        return;
+      }
+
+      setThroneSlug(result.slug);
+      setDeployedNotice(true);
+      setStep(2);
+    } catch {
+      setError("Network error. Cannot deploy this throne right now.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openProductStep() {
+    if (!validateStep1()) return;
+    if (throneSlug) {
+      setStep(2);
+      return;
+    }
+    void deployThrone();
+  }
+
+  async function submitConquest() {
+    if (!throneSlug) {
+      setError("Deploy the throne before attempting a conquest.");
+      setStep(1);
+      return;
+    }
+    if (!user) {
+      window.location.assign(`/api/auth/x/login?returnTo=${encodeURIComponent("/start")}`);
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          slug: throneSlug,
           name: name.trim(),
           url: url.trim(),
           productXHandle: handle.replace(/^@/, "").trim(),
@@ -149,13 +203,13 @@ export default function StartThronePage() {
           window.location.assign(`/api/auth/x/login?returnTo=${encodeURIComponent("/start")}`);
           return;
         }
-        setError(result.error || "Cannot create throne right now.");
+        setError(result.error || "Cannot start the conquest right now.");
         return;
       }
 
       window.location.assign(result.redirectUrl);
     } catch {
-      setError("Network error. Cannot create throne right now.");
+      setError("Network error. Cannot start the conquest right now.");
     } finally {
       setBusy(false);
     }
@@ -184,9 +238,7 @@ export default function StartThronePage() {
           <button
             type="button"
             className={`step-badge ${step === 2 ? "is-active" : step > 2 ? "is-done" : ""}`}
-            onClick={() => {
-              if (validateStep1()) setStep(2);
-            }}
+            onClick={openProductStep}
           >
             2 · YOUR PRODUCT & OFFER
           </button>
@@ -209,13 +261,28 @@ export default function StartThronePage() {
         </div>
       )}
 
+      {deployedNotice && (
+        <div className="throne-deployed-overlay" role="dialog" aria-modal="true" aria-labelledby="throne-deployed-title">
+          <div className="throne-deployed-popup">
+            <p className="smallcaps">THE KINGDOM HAS EXPANDED</p>
+            <h2 id="throne-deployed-title" className="display">NEW THRONE DEPLOYED.</h2>
+            <p>
+              The seat is live. The default rival is sitting on borrowed time. Now put your product in the arena and make them pay to keep it.
+            </p>
+            <button type="button" className="steal-button" onClick={() => setDeployedNotice(false)}>
+              ENTER THE PRODUCT ARENA →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* STEP 1: The Fight & Market */}
       {step === 1 && (
         <section className="start-form-section">
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (validateStep1()) setStep(2);
+              openProductStep();
             }}
           >
             <div className="form-grid">
@@ -308,8 +375,8 @@ export default function StartThronePage() {
 
             <div className="builder-actions">
               <a href="/" className="checkout-cancel">Cancel</a>
-              <button type="submit" className="steal-button next-button">
-                Continue to Product & Offer →
+              <button type="submit" className="steal-button next-button" disabled={busy}>
+                {busy ? "DEPLOYING THRONE..." : "DEPLOY THRONE & CONTINUE →"}
               </button>
             </div>
           </form>
@@ -458,7 +525,7 @@ export default function StartThronePage() {
       {step === 3 && (
         <section className="start-form-section">
           <h2 className="builder-heading display">
-            OPEN THE {categoryName.toUpperCase()} THRONE
+            CONQUER THE {categoryName.toUpperCase()} THRONE
           </h2>
 
           <div className="new-throne-story-preview">
@@ -466,7 +533,7 @@ export default function StartThronePage() {
               <strong>{defaultRivalName || "Default Rival"}</strong> sits here by default for <strong>$0</strong>.
             </p>
             <p className="story-step-2">
-              <strong>{name || "Your Product"}</strong> opens the throne by removing them for <strong>$9</strong>.
+              <strong>{name || "Your Product"}</strong> can conquer the throne by removing them for <strong>$9</strong>.
             </p>
           </div>
 
@@ -546,9 +613,9 @@ export default function StartThronePage() {
               type="button"
               className="steal-button create-reign-btn"
               disabled={busy}
-              onClick={submitNewThrone}
+              onClick={submitConquest}
             >
-              {busy ? "PREPARING CHECKOUT..." : "OPEN THIS THRONE — $9"}
+              {busy ? "PREPARING CONQUEST..." : "CONQUER THIS THRONE — $9"}
             </button>
           </div>
         </section>
